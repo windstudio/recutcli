@@ -23,10 +23,8 @@ def test_check_ffmpeg_returns_false_when_not_available(mock_run):
     assert check_ffmpeg() is False
 
 
-@patch("recut.downloader.check_ffmpeg")
 @patch("recut.downloader.subprocess.run")
-def test_download_and_merge_calls_ffmpeg(mock_subprocess, mock_check):
-    mock_check.return_value = True
+def test_download_and_merge_calls_ffmpeg(mock_subprocess):
     mock_subprocess.return_value = MagicMock()
 
     result = download_and_merge_m3u8(
@@ -38,18 +36,8 @@ def test_download_and_merge_calls_ffmpeg(mock_subprocess, mock_check):
     mock_subprocess.assert_called_once()
 
 
-@patch("recut.downloader.check_ffmpeg")
-def test_download_raises_when_ffmpeg_missing(mock_check):
-    mock_check.return_value = False
-
-    with pytest.raises(RuntimeError, match="ffmpeg is not installed"):
-        download_and_merge_m3u8("https://example.com/video.m3u8", Path("/tmp/output.mp4"))
-
-
-@patch("recut.downloader.check_ffmpeg")
 @patch("recut.downloader.subprocess.run")
-def test_download_retries_on_failure(mock_subprocess, mock_check):
-    mock_check.return_value = True
+def test_download_retries_on_failure(mock_subprocess):
     # First two attempts fail, third succeeds
     mock_subprocess.side_effect = [
         subprocess.CalledProcessError(1, "ffmpeg", stderr=b"error1"),
@@ -67,10 +55,8 @@ def test_download_retries_on_failure(mock_subprocess, mock_check):
     assert mock_subprocess.call_count == 3
 
 
-@patch("recut.downloader.check_ffmpeg")
 @patch("recut.downloader.subprocess.run")
-def test_download_raises_after_max_retries(mock_subprocess, mock_check):
-    mock_check.return_value = True
+def test_download_raises_after_max_retries(mock_subprocess):
     mock_subprocess.side_effect = subprocess.CalledProcessError(
         1, "ffmpeg", stderr=b"download failed"
     )

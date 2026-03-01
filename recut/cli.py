@@ -7,9 +7,9 @@ from tempfile import TemporaryDirectory
 import click
 
 from recut import __version__
-from recut.analyzer import detect_scenes, select_top_fragments, Scene
+from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration
 from recut.config import get_platform_config, PLATFORMS
-from recut.downloader import check_ffmpeg, download_and_merge_m3u8
+from recut.downloader import check_ffmpeg, download_and_merge_m3u8, FFMPEG_INSTALL_MSG
 from recut.editor import create_short
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
 
@@ -37,11 +37,7 @@ def main(url: str, output: str, platform: str, scene_threshold: float):
     """
     # Check ffmpeg
     if not check_ffmpeg():
-        click.echo("Error: ffmpeg is not installed.", err=True)
-        click.echo("Install with:")
-        click.echo("  Windows: winget install ffmpeg")
-        click.echo("  macOS: brew install ffmpeg")
-        click.echo("  Linux: apt install ffmpeg")
+        click.echo(f"Error: {FFMPEG_INSTALL_MSG}", err=True)
         raise SystemExit(1)
 
     output_path = Path(output)
@@ -77,7 +73,6 @@ def main(url: str, output: str, platform: str, scene_threshold: float):
         if not fragments:
             click.echo("Warning: No scenes detected. Using fixed intervals.")
             # Fallback: create fixed intervals
-            from recut.analyzer import get_video_duration
             duration = get_video_duration(downloaded_video)
             interval = 5.0
             fragments = [

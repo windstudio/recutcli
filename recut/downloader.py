@@ -11,6 +11,12 @@ try:
 except ImportError:
     pass
 
+# Shared ffmpeg installation message
+FFMPEG_INSTALL_MSG = """ffmpeg is not installed. Please install it first.
+  - Windows: winget install ffmpeg
+  - macOS: brew install ffmpeg
+  - Linux: apt install ffmpeg"""
+
 
 def get_ffmpeg_path() -> str:
     """Get ffmpeg executable path, using imageio-ffmpeg as fallback."""
@@ -44,14 +50,6 @@ def download_and_merge_m3u8(m3u8_url: str, output_path: Path, retries: int = 3) 
     Returns:
         Path to the downloaded video file
     """
-    if not check_ffmpeg():
-        raise RuntimeError(
-            "ffmpeg is not installed. Please install it first.\n"
-            "  - Windows: winget install ffmpeg\n"
-            "  - macOS: brew install ffmpeg\n"
-            "  - Linux: apt install ffmpeg"
-        )
-
     output_path = Path(output_path)
     ffmpeg = get_ffmpeg_path()
 

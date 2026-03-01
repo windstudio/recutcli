@@ -5,21 +5,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-# Try to get ffmpeg from imageio-ffmpeg as fallback
-_ffmpeg_path = None
-try:
-    import imageio_ffmpeg
-    _ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-except ImportError:
-    pass
-
-
-def get_ffmpeg_path() -> str:
-    """Get ffmpeg executable path, using imageio-ffmpeg as fallback."""
-    global _ffmpeg_path
-    if _ffmpeg_path:
-        return _ffmpeg_path
-    return "ffmpeg"
+from recut.downloader import get_ffmpeg_path
 
 
 @dataclass
@@ -133,7 +119,6 @@ def get_video_duration(video_path: Path) -> float:
     result = subprocess.run(cmd, capture_output=True, text=True)
     # Parse duration from stderr (ffmpeg outputs info to stderr)
     # Look for "Duration: HH:MM:SS.mmm" in the output
-    import re
     match = re.search(r"Duration: (\d+):(\d+):(\d+\.?\d*)", result.stderr)
     if match:
         hours = int(match.group(1))
