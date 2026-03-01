@@ -54,5 +54,3 @@ def download_and_merge_m3u8(m3u8_url: str, output_path: Path, retries: int = 3) 
             if attempt == retries - 1:
                 raise RuntimeError(f"Failed to download video after {retries} attempts: {e.stderr.decode()}")
             continue
-
-    return output_path
