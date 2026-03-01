@@ -21,6 +21,7 @@ def test_get_reels_config():
     config = get_platform_config("reels")
     assert config.width == 1080
     assert config.height == 1920
+    assert config.max_duration == 25
 
 
 def test_invalid_platform_raises():
