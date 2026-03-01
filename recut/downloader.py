@@ -3,12 +3,28 @@
 import subprocess
 from pathlib import Path
 
+# Try to get ffmpeg from imageio-ffmpeg as fallback
+_ffmpeg_path = None
+try:
+    import imageio_ffmpeg
+    _ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+except ImportError:
+    pass
+
+
+def get_ffmpeg_path() -> str:
+    """Get ffmpeg executable path, using imageio-ffmpeg as fallback."""
+    global _ffmpeg_path
+    if _ffmpeg_path:
+        return _ffmpeg_path
+    return "ffmpeg"
+
 
 def check_ffmpeg() -> bool:
     """Check if ffmpeg is available."""
     try:
         subprocess.run(
-            ["ffmpeg", "-version"],
+            [get_ffmpeg_path(), "-version"],
             capture_output=True,
             check=True
         )
@@ -37,11 +53,12 @@ def download_and_merge_m3u8(m3u8_url: str, output_path: Path, retries: int = 3) 
         )
 
     output_path = Path(output_path)
+    ffmpeg = get_ffmpeg_path()
 
     for attempt in range(retries):
         try:
             cmd = [
-                "ffmpeg",
+                ffmpeg,
                 "-i", m3u8_url,
                 "-c", "copy",
                 "-bsf:a", "aac_adtstoasc",

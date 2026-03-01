@@ -6,6 +6,7 @@ from pathlib import Path
 
 from recut.analyzer import Scene
 from recut.config import PlatformConfig
+from recut.downloader import get_ffmpeg_path
 
 
 def format_timestamp(seconds: float) -> str:
@@ -28,7 +29,7 @@ def cut_fragment(video_path: Path, fragment: Scene, output_path: Path) -> Path:
         Path to the extracted fragment
     """
     cmd = [
-        "ffmpeg",
+        get_ffmpeg_path(),
         "-i", str(video_path),
         "-ss", format_timestamp(fragment.start),
         "-to", format_timestamp(fragment.end),
@@ -58,7 +59,7 @@ def concatenate_fragments(fragment_paths: list[Path], output_path: Path) -> Path
 
     try:
         cmd = [
-            "ffmpeg",
+            get_ffmpeg_path(),
             "-f", "concat",
             "-safe", "0",
             "-i", list_file,
@@ -85,7 +86,7 @@ def transcode_for_platform(video_path: Path, output_path: Path, config: Platform
         Path to the transcoded video
     """
     cmd = [
-        "ffmpeg",
+        get_ffmpeg_path(),
         "-i", str(video_path),
         "-vf", f"scale={config.width}:{config.height}:force_original_aspect_ratio=decrease,pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2",
         "-c:v", "libx264",

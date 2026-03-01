@@ -1,9 +1,25 @@
 """Scene detection and fragment scoring."""
 
+import re
 import subprocess
-import json
 from dataclasses import dataclass
 from pathlib import Path
+
+# Try to get ffmpeg from imageio-ffmpeg as fallback
+_ffmpeg_path = None
+try:
+    import imageio_ffmpeg
+    _ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+except ImportError:
+    pass
+
+
+def get_ffmpeg_path() -> str:
+    """Get ffmpeg executable path, using imageio-ffmpeg as fallback."""
+    global _ffmpeg_path
+    if _ffmpeg_path:
+        return _ffmpeg_path
+    return "ffmpeg"
 
 
 @dataclass
@@ -49,7 +65,7 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
         List of Scene objects with timestamps
     """
     cmd = [
-        "ffmpeg",
+        get_ffmpeg_path(),
         "-i", str(video_path),
         "-vf", f"select='gt(scene,{threshold})',showinfo",
         "-f", "null",
@@ -105,18 +121,26 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
 
 
 def get_video_duration(video_path: Path) -> float:
-    """Get video duration in seconds using ffprobe."""
+    """Get video duration in seconds using ffmpeg."""
+    # Use ffmpeg to get duration from the input file
     cmd = [
-        "ffprobe",
-        "-v", "quiet",
-        "-show_entries", "format=duration",
-        "-of", "json",
-        str(video_path)
+        get_ffmpeg_path(),
+        "-i", str(video_path),
+        "-f", "null",
+        "-"
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
-    data = json.loads(result.stdout)
-    return float(data["format"]["duration"])
+    # Parse duration from stderr (ffmpeg outputs info to stderr)
+    # Look for "Duration: HH:MM:SS.mmm" in the output
+    import re
+    match = re.search(r"Duration: (\d+):(\d+):(\d+\.?\d*)", result.stderr)
+    if match:
+        hours = int(match.group(1))
+        minutes = int(match.group(2))
+        seconds = float(match.group(3))
+        return hours * 3600 + minutes * 60 + seconds
+    return 0.0
 
 
 def select_top_fragments(fragments: list[Scene], target_duration: float) -> list[Scene]:
