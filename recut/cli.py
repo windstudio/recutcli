@@ -29,11 +29,15 @@ from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
     default=0.3,
     help="Scene change detection threshold 0-1 (default: 0.3)"
 )
+@click.option(
+    "--m3u8-url",
+    help="Direct m3u8 URL (skip Kickstarter scraping)"
+)
 @click.version_option(version=__version__)
-def main(url: str, output: str, platform: str, scene_threshold: float):
+def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url: str | None):
     """Download Kickstarter video and create a 25-second social media short.
 
-    URL: Kickstarter project URL
+    URL: Kickstarter project URL (ignored if --m3u8-url is provided)
     """
     # Check ffmpeg
     if not check_ffmpeg():
@@ -43,18 +47,20 @@ def main(url: str, output: str, platform: str, scene_threshold: float):
     output_path = Path(output)
     config = get_platform_config(platform)
 
-    click.echo(f"Fetching Kickstarter page: {url}")
-    try:
-        html = fetch_kickstarter_page(url)
-    except Exception as e:
-        click.echo(f"Error fetching page: {e}", err=True)
-        raise SystemExit(1)
-
-    click.echo("Extracting video URL...")
-    m3u8_url = extract_m3u8_url(html)
+    # Use direct m3u8 URL if provided, otherwise scrape from Kickstarter
     if not m3u8_url:
-        click.echo("Error: Could not find video URL in page", err=True)
-        raise SystemExit(1)
+        click.echo(f"Fetching Kickstarter page: {url}")
+        try:
+            html = fetch_kickstarter_page(url)
+        except Exception as e:
+            click.echo(f"Error fetching page: {e}", err=True)
+            raise SystemExit(1)
+
+        click.echo("Extracting video URL...")
+        m3u8_url = extract_m3u8_url(html)
+        if not m3u8_url:
+            click.echo("Error: Could not find video URL in page", err=True)
+            raise SystemExit(1)
 
     with TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
