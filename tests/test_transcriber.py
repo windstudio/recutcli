@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from recut.transcriber import extract_audio
+from recut.transcriber import extract_audio, transcribe_audio
 from recut.downloader import get_ffmpeg_path
 
 
@@ -33,3 +33,20 @@ def test_extract_audio_creates_wav_file():
 
         assert result == audio_path
         assert audio_path.exists()
+
+
+def test_transcribe_audio_returns_text():
+    """Test that transcribe_audio returns text from audio."""
+    with TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        # Create a silent WAV file for testing
+        audio_path = tmpdir / "test.wav"
+        subprocess.run([
+            get_ffmpeg_path(), "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono",
+            "-t", "1", "-c:a", "pcm_s16le", "-y", str(audio_path)
+        ], capture_output=True, check=True)
+
+        # Whisper will return empty or minimal text for silent audio
+        result = transcribe_audio(audio_path, model="small")
+
+        assert isinstance(result, str)
