@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from recut.transcriber import extract_audio, transcribe_audio
+from recut.transcriber import extract_audio, transcribe_audio, save_transcript
 from recut.downloader import get_ffmpeg_path
 
 
@@ -56,3 +56,18 @@ def test_transcribe_audio_returns_text():
         result = transcribe_audio(audio_path, model="small")
 
         assert isinstance(result, str)
+
+
+def test_save_transcript_creates_md_file():
+    """Test that save_transcript creates a markdown file."""
+    with TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        output_path = tmpdir / "transcript.md"
+
+        result = save_transcript("Hello world", output_path)
+
+        assert result == output_path
+        assert output_path.exists()
+        content = output_path.read_text(encoding="utf-8")
+        assert "# Transcript" in content
+        assert "Hello world" in content

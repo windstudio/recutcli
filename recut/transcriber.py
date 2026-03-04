@@ -62,3 +62,23 @@ def transcribe_audio(audio_path: Path, model: str = "small") -> str:
         raise RuntimeError(f"Failed to transcribe audio {audio_path}: {e}")
 
     return result["text"]
+
+
+def save_transcript(transcript: str, output_path: Path) -> Path:
+    """Save transcript to markdown file.
+
+    Args:
+        transcript: Transcribed text
+        output_path: Path to output markdown file
+
+    Returns:
+        Path to the saved file
+    """
+    output_path = Path(output_path)
+
+    content = f"""# Transcript
+
+{transcript}
+"""
+    output_path.write_text(content, encoding="utf-8")
+    return output_path
