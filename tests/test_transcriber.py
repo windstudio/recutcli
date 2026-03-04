@@ -37,6 +37,12 @@ def test_extract_audio_creates_wav_file():
 
 def test_transcribe_audio_returns_text():
     """Test that transcribe_audio returns text from audio."""
+    # Skip if ffmpeg not available
+    try:
+        subprocess.run([get_ffmpeg_path(), "-version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pytest.skip("ffmpeg not available")
+
     with TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
         # Create a silent WAV file for testing

@@ -51,8 +51,14 @@ def transcribe_audio(audio_path: Path, model: str = "small") -> str:
     """
     audio_path = Path(audio_path)
 
+    if not audio_path.exists():
+        raise FileNotFoundError(f"Audio file not found: {audio_path}")
+
     # Load model and transcribe
-    whisper_model = whisper.load_model(model)
-    result = whisper_model.transcribe(str(audio_path))
+    try:
+        whisper_model = whisper.load_model(model)
+        result = whisper_model.transcribe(str(audio_path))
+    except Exception as e:
+        raise RuntimeError(f"Failed to transcribe audio {audio_path}: {e}")
 
     return result["text"]
