@@ -13,6 +13,7 @@ from recut.config import get_platform_config, PLATFORMS
 from recut.downloader import check_ffmpeg, download_and_merge_m3u8, FFMPEG_INSTALL_MSG
 from recut.editor import create_short
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
+from recut.transcriber import extract_audio, transcribe_audio, save_transcript
 
 
 @click.command()
@@ -99,6 +100,19 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
 
         click.echo(f"Creating short video for {platform}...")
         create_short(downloaded_video, selected, output_path, config)
+
+        # Extract audio and transcribe
+        click.echo("Extracting audio...")
+        audio_path = tmpdir / "audio.wav"
+        extract_audio(downloaded_video, audio_path)
+
+        click.echo("Transcribing with Whisper...")
+        transcript = transcribe_audio(audio_path)
+
+        # Save transcript
+        script_path = output_path.with_stem(output_path.stem + "_script").with_suffix(".md")
+        click.echo(f"Saving transcript to: {script_path}")
+        save_transcript(transcript, script_path)
 
         # Save original downloaded video with "_orig" suffix
         orig_path = output_path.with_stem(output_path.stem + "_orig")
