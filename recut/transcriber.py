@@ -30,5 +30,8 @@ def extract_audio(video_path: Path, audio_path: Path) -> Path:
         "-y",  # Overwrite
         str(audio_path)
     ]
-    subprocess.run(cmd, capture_output=True, check=True)
+    try:
+        subprocess.run(cmd, capture_output=True, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to extract audio from {video_path}: {e.stderr.decode()}")
     return audio_path

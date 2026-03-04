@@ -8,13 +8,14 @@ from tempfile import TemporaryDirectory
 import pytest
 
 from recut.transcriber import extract_audio
+from recut.downloader import get_ffmpeg_path
 
 
 def test_extract_audio_creates_wav_file():
     """Test that extract_audio creates a WAV file from video."""
     # Skip if ffmpeg not available
     try:
-        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+        subprocess.run([get_ffmpeg_path(), "-version"], capture_output=True, check=True)
     except (subprocess.CalledProcessError, FileNotFoundError):
         pytest.skip("ffmpeg not available")
 
@@ -23,7 +24,7 @@ def test_extract_audio_creates_wav_file():
         # Create a silent test video (1 second)
         video_path = tmpdir / "test.mp4"
         subprocess.run([
-            "ffmpeg", "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono",
+            get_ffmpeg_path(), "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono",
             "-t", "1", "-c:a", "aac", "-y", str(video_path)
         ], capture_output=True, check=True)
 
