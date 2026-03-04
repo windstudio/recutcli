@@ -75,6 +75,7 @@ def save_transcript(transcript: str, output_path: Path) -> Path:
         Path to the saved file
     """
     output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     content = f"""# Transcript
 
