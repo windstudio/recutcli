@@ -104,15 +104,27 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
         # Extract audio and transcribe
         click.echo("Extracting audio...")
         audio_path = tmpdir / "audio.wav"
-        extract_audio(downloaded_video, audio_path)
+        try:
+            extract_audio(downloaded_video, audio_path)
+        except Exception as e:
+            click.echo(f"Error extracting audio: {e}", err=True)
+            raise SystemExit(1)
 
         click.echo("Transcribing with Whisper...")
-        transcript = transcribe_audio(audio_path)
+        try:
+            transcript = transcribe_audio(audio_path)
+        except Exception as e:
+            click.echo(f"Error transcribing audio: {e}", err=True)
+            raise SystemExit(1)
 
         # Save transcript
         script_path = output_path.with_stem(output_path.stem + "_script").with_suffix(".md")
         click.echo(f"Saving transcript to: {script_path}")
-        save_transcript(transcript, script_path)
+        try:
+            save_transcript(transcript, script_path)
+        except Exception as e:
+            click.echo(f"Error saving transcript: {e}", err=True)
+            raise SystemExit(1)
 
         # Save original downloaded video with "_orig" suffix
         orig_path = output_path.with_stem(output_path.stem + "_orig")
