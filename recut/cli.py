@@ -1,6 +1,7 @@
 # recut/cli.py
 """Command-line interface for recut."""
 
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -98,6 +99,11 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
 
         click.echo(f"Creating short video for {platform}...")
         create_short(downloaded_video, selected, output_path, config)
+
+        # Save original downloaded video with "_orig" suffix
+        orig_path = output_path.with_stem(output_path.stem + "_orig")
+        click.echo(f"Saving original video to: {orig_path}")
+        shutil.copy2(downloaded_video, orig_path)
 
     click.echo(f"Done! Output saved to: {output_path}")
 
