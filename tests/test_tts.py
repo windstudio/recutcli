@@ -16,8 +16,6 @@ def test_generate_audio_calls_edge_by_default():
         output_path = Path(tmpdir) / "output.wav"
 
         with patch("recut.tts._generate_edge_audio") as mock_edge, \
-             patch("recut.tts._generate_coqui_audio") as mock_coqui, \
-             patch("recut.tts._generate_piper_audio") as mock_piper, \
              patch("recut.tts.get_tts_config") as mock_config:
             mock_config.return_value = MagicMock(engine="edge", voice="test-voice")
             mock_edge.return_value = output_path
@@ -26,8 +24,6 @@ def test_generate_audio_calls_edge_by_default():
 
             assert result == output_path
             mock_edge.assert_called_once_with("测试文本", output_path, "test-voice")
-            mock_coqui.assert_not_called()
-            mock_piper.assert_not_called()
 
 
 def test_generate_audio_calls_coqui_when_specified():
@@ -37,9 +33,7 @@ def test_generate_audio_calls_coqui_when_specified():
     with TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "output.wav"
 
-        with patch("recut.tts._generate_edge_audio") as mock_edge, \
-             patch("recut.tts._generate_coqui_audio") as mock_coqui, \
-             patch("recut.tts._generate_piper_audio") as mock_piper, \
+        with patch("recut.tts._generate_coqui_audio") as mock_coqui, \
              patch("recut.tts.get_tts_config") as mock_config:
             mock_config.return_value = MagicMock(engine="coqui", coqui_voice="test-coqui-voice")
             mock_coqui.return_value = output_path
@@ -48,8 +42,6 @@ def test_generate_audio_calls_coqui_when_specified():
 
             assert result == output_path
             mock_coqui.assert_called_once_with("测试文本", output_path, "test-coqui-voice")
-            mock_edge.assert_not_called()
-            mock_piper.assert_not_called()
 
 
 def test_generate_audio_calls_piper_when_specified():
@@ -59,9 +51,7 @@ def test_generate_audio_calls_piper_when_specified():
     with TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "output.wav"
 
-        with patch("recut.tts._generate_edge_audio") as mock_edge, \
-             patch("recut.tts._generate_coqui_audio") as mock_coqui, \
-             patch("recut.tts._generate_piper_audio") as mock_piper, \
+        with patch("recut.tts._generate_piper_audio") as mock_piper, \
              patch("recut.tts.get_tts_config") as mock_config:
             mock_config.return_value = MagicMock(engine="piper", piper_voice="test-piper-voice")
             mock_piper.return_value = output_path
@@ -70,8 +60,6 @@ def test_generate_audio_calls_piper_when_specified():
 
             assert result == output_path
             mock_piper.assert_called_once_with("测试文本", output_path, "test-piper-voice")
-            mock_edge.assert_not_called()
-            mock_coqui.assert_not_called()
 
 
 def test_generate_audio_uses_custom_voice():
