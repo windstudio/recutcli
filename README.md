@@ -1,6 +1,6 @@
 # Recut
 
-Auto-clip Kickstarter videos into 25-second social media shorts.
+Auto-clip Kickstarter videos into short social media videos with Chinese dubbing.
 
 ## Installation
 
@@ -22,8 +22,24 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 ### Options
 
 - `--platform {tiktok,instagram,reels}` - Target platform (default: tiktok)
+- `--duration SECONDS` - Video duration (default: 30)
 - `--scene-threshold 0.3` - Scene change sensitivity (default: 0.3)
 - `--m3u8-url URL` - Direct m3u8 URL (bypass Kickstarter scraping)
+- `--tts-engine {edge,coqui,piper}` - TTS engine for Chinese dubbing (default: edge)
+
+### Output Files
+
+Running `recut -o sample/Keytron.mp4` generates:
+
+| File | Description |
+|------|-------------|
+| `Keytron.mp4` | Clipped short video |
+| `Keytron_final.mp4` | Final video with Chinese dubbing and subtitles |
+| `Keytron_raw.mp4` | Original downloaded video |
+| `Keytron_dubbing.wav` | TTS-generated Chinese audio |
+| `Keytron_chs.md` | Chinese script |
+| `Keytron_script.md` | English transcript |
+| `Keytron.srt` | Subtitle file |
 
 ### Bypassing Cloudflare
 
@@ -37,6 +53,23 @@ If Kickstarter blocks direct requests (403 error), use a browser to get the m3u8
 ```bash
 recut https://kickstarter.com/projects/xxx -o output.mp4 --m3u8-url "https://v2.kickstarter.com/..."
 ```
+
+## Configuration
+
+Create a `.env` file in the project directory:
+
+```env
+YUANJING_API_KEY=your_api_key_here
+TTS_ENGINE=edge
+TTS_VOICE=zh-CN-XiaoxiaoNeural
+WHISPER_MODEL=small
+```
+
+### TTS Engines
+
+- **edge** (default) - Microsoft Edge TTS, high quality Chinese voice
+- **coqui** - Open-source TTS (requires Python 3.9-3.11)
+- **piper** - Offline TTS using ONNX models
 
 ## License
 
