@@ -1,12 +1,28 @@
+# Environment
+.env
+
+# Documentation
+docs/
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
+.eggs/
+*.egg-info/
+*.egg
+.pytest_cache/
 .venv/
 venv/
-*.egg-info/
 dist/
 build/
-.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Media files
 *.mp4
 *.ts
 *.m3u8
