@@ -1,0 +1,13 @@
+增加新功能：
+1. 通过OpenAI兼容模式调用元景平台的GLM-5模型接口，把英文口播文案翻译成中文，并提炼要点，写成25秒的短视频口播文案，采用“3秒钩子+中间内容+最后总结”的结构；
+2. 使用Piper TTS（https://github.com/OHF-Voice/piper1-gpl），基于短视频口播文案生成25秒的音频；
+3. 使用Whisper对音频进行转写，生成SRT字幕；转写结果和第1条生成的口播文案进行比对，文本如果有差异，以第1条生成的口播文案为准；
+4. 使用Ffmpeg把视频、音频、字幕合成为最终版的社交媒体短视频。
+
+元景GLM-5模型接口信息如下：
+URL：https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1/chat/completions
+（注意，如果是python openai包等的一键调用，URL需要省略掉v1后面的chat/completions）
+API Key：sk-9094530432844025b91b543d6075c210
+model：glm-5
+
+调用glm-5的API Key写在.env文件里，.env文件和docs文件夹不要推到github的代码仓库

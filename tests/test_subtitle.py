@@ -64,7 +64,7 @@ def test_srt_format():
 
 
 def test_align_subtitle_corrects_text():
-    """Test that align_subtitle corrects text while keeping timestamps."""
+    """Test that align_subtitle creates segments per line with proportional timing."""
     from recut.subtitle import align_subtitle
 
     with TemporaryDirectory() as tmpdir:
@@ -79,19 +79,22 @@ def test_align_subtitle_corrects_text():
 """, encoding="utf-8")
         output_path = Path(tmpdir) / "output.srt"
 
-        expected_text = "正确文字 另一段正确"
+        # Multi-line text: each line becomes one segment
+        expected_text = "正确文字\n另一段正确"
         result = align_subtitle(srt_path, expected_text, output_path)
 
         assert result == output_path
         content = output_path.read_text(encoding="utf-8")
         assert "正确文字" in content
+        assert "另一段正确" in content
         assert "错误文字" not in content
-        # Timestamps should be preserved
-        assert "00:00:00,000 --> 00:00:02,000" in content
+        # Should have 2 segments with timestamps starting from 0
+        assert "00:00:00,000 -->" in content
+        # Total duration is 4 seconds, distributed by character count
 
 
 def test_align_subtitle_handles_mismatch():
-    """Test align_subtitle handles segment count mismatch."""
+    """Test align_subtitle creates correct number of segments from text lines."""
     from recut.subtitle import align_subtitle
 
     with TemporaryDirectory() as tmpdir:
@@ -106,15 +109,14 @@ def test_align_subtitle_handles_mismatch():
 """, encoding="utf-8")
         output_path = Path(tmpdir) / "output.srt"
 
-        # Only one segment of expected text, but SRT has two
+        # Single-line text creates one segment
         expected_text = "简短文本"
         result = align_subtitle(srt_path, expected_text, output_path)
 
         assert result == output_path
         content = output_path.read_text(encoding="utf-8")
-        # Should still produce valid SRT with timestamps preserved
-        assert "00:00:00,000 --> 00:00:02,000" in content
-        assert "00:00:02,000 --> 00:00:04,000" in content
-        # Characters should be distributed across segments
-        # Both segments should have some characters from the expected text
-        assert "简" in content or "文" in content
+        # Should have exactly one segment
+        assert content.count("\n\n") == 0  # Only one block, no double newlines
+        assert "简短文本" in content
+        # Time should be distributed based on character count
+        assert "00:00:00,000 -->" in content
