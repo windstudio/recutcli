@@ -14,7 +14,9 @@ def test_generate_audio_creates_wav_file():
     with TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "output.wav"
 
-        with patch("recut.tts.PiperVoice") as mock_voice_class:
+        with patch("recut.tts._ensure_model_files") as mock_ensure, \
+             patch("recut.tts.PiperVoice") as mock_voice_class:
+            mock_ensure.return_value = (Path("model.onnx"), Path("model.onnx.json"))
             mock_voice = MagicMock()
             mock_voice_class.load.return_value = mock_voice
 
@@ -31,16 +33,16 @@ def test_generate_audio_with_custom_voice():
     with TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "output.wav"
 
-        with patch("recut.tts.PiperVoice") as mock_voice_class:
+        with patch("recut.tts._ensure_model_files") as mock_ensure, \
+             patch("recut.tts.PiperVoice") as mock_voice_class:
+            mock_ensure.return_value = (Path("model.onnx"), Path("model.onnx.json"))
             mock_voice = MagicMock()
             mock_voice_class.load.return_value = mock_voice
 
             generate_audio("测试", output_path, voice="zh_CN-male-medium")
 
-            mock_voice_class.load.assert_called_once()
-            # Verify voice name was passed
-            call_kwargs = mock_voice_class.load.call_args[1]
-            assert "zh_CN-male-medium" in str(call_kwargs) or call_kwargs.get("voice") == "zh_CN-male-medium" or True  # Flexible assertion
+            # Verify _ensure_model_files was called with the custom voice
+            mock_ensure.assert_called_once_with("zh_CN-male-medium")
 
 
 def test_generate_audio_raises_on_error():
@@ -50,8 +52,8 @@ def test_generate_audio_raises_on_error():
     with TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "output.wav"
 
-        with patch("recut.tts.PiperVoice") as mock_voice_class:
-            mock_voice_class.load.side_effect = Exception("TTS Error")
+        with patch("recut.tts._ensure_model_files") as mock_ensure:
+            mock_ensure.side_effect = RuntimeError("Model not found")
 
             with pytest.raises(RuntimeError, match="TTS generation failed"):
                 generate_audio("测试", output_path)
