@@ -1,7 +1,6 @@
 # tests/test_translator.py
 """Tests for translator module."""
 
-import os
 from unittest.mock import patch, MagicMock
 
 import pytest
