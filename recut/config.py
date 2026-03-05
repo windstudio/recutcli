@@ -1,4 +1,4 @@
-"""Platform-specific video output configurations."""
+"""Configuration for recut: platform settings, TTS, and API credentials."""
 
 import os
 from dataclasses import dataclass
