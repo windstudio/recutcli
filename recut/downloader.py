@@ -63,9 +63,10 @@ def download_and_merge_m3u8(m3u8_url: str, output_path: Path, retries: int = 3) 
                 "-y",  # Overwrite output
                 str(output_path)
             ]
-            subprocess.run(cmd, capture_output=True, check=True)
+            # Show FFmpeg output so user can see download progress
+            subprocess.run(cmd, check=True)
             return output_path
         except subprocess.CalledProcessError as e:
             if attempt == retries - 1:
-                raise RuntimeError(f"Failed to download video after {retries} attempts: {e.stderr.decode()}")
+                raise RuntimeError(f"Failed to download video after {retries} attempts")
             continue
