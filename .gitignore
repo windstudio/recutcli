@@ -4,6 +4,9 @@
 # Documentation
 docs/
 
+# Sample output
+sample/
+
 # Python
 __pycache__/
 *.py[cod]
