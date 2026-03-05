@@ -124,18 +124,32 @@ def align_subtitle(
     text_lines = [line.strip() for line in expected_text.strip().split("\n") if line.strip()]
 
     if len(text_lines) > 1:
-        # Multi-line format: each line corresponds to one subtitle segment
-        # Distribute segments proportionally
+        # Multi-line format: distribute lines to segments
         new_blocks = []
-        line_idx = 0
+        num_segments = len(segments_info)
+        num_lines = len(text_lines)
 
-        for seg in segments_info:
-            if line_idx < len(text_lines):
-                new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{text_lines[line_idx]}")
-                line_idx += 1
-            else:
-                # If we run out of lines, use empty segment
-                pass  # Skip empty segments
+        if num_lines <= num_segments:
+            # More segments than lines: assign one line per segment, skip extra segments
+            for i, seg in enumerate(segments_info[:num_lines]):
+                new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{text_lines[i]}")
+        else:
+            # More lines than segments: distribute extra lines proportionally
+            lines_per_segment = []
+            base_lines = num_lines // num_segments
+            extra_lines = num_lines % num_segments
+
+            for i in range(num_segments):
+                # First few segments get one extra line
+                count = base_lines + (1 if i < extra_lines else 0)
+                lines_per_segment.append(count)
+
+            line_idx = 0
+            for i, seg in enumerate(segments_info):
+                count = lines_per_segment[i]
+                segment_text = "".join(text_lines[line_idx:line_idx + count])
+                new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{segment_text}")
+                line_idx += count
 
         output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")
     else:
