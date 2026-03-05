@@ -137,3 +137,94 @@ def create_short(
         transcode_for_platform(concat_path, output_path, config)
 
     return output_path
+
+
+def extract_audio_for_mixing(video_path: Path, audio_path: Path) -> Path:
+    """Extract audio from video for mixing (WAV format).
+
+    Args:
+        video_path: Source video path
+        audio_path: Output audio path
+
+    Returns:
+        Path to extracted audio
+    """
+    video_path = Path(video_path)
+    audio_path = Path(audio_path)
+    audio_path.parent.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        get_ffmpeg_path(),
+        "-i", str(video_path),
+        "-vn",
+        "-acodec", "pcm_s16le",
+        "-ar", "16000",
+        "-ac", "1",
+        "-y",
+        str(audio_path)
+    ]
+    subprocess.run(cmd, capture_output=True, check=True)
+    return audio_path
+
+
+def merge_video_audio_subtitle(
+    video_path: Path,
+    original_audio_path: Path,
+    dubbing_audio_path: Path,
+    subtitle_path: Path,
+    output_path: Path,
+    dubbing_volume: float = 1.0,
+    original_volume: float = 0.3
+) -> Path:
+    """Merge video with audio tracks and subtitle.
+
+    Args:
+        video_path: Source video path
+        original_audio_path: Original video audio (background)
+        dubbing_audio_path: Chinese dubbing audio
+        subtitle_path: SRT subtitle file
+        output_path: Output video path
+        dubbing_volume: Volume for dubbing audio (default 1.0)
+        original_volume: Volume for original audio (default 0.3)
+
+    Returns:
+        Path to merged video
+    """
+    video_path = Path(video_path)
+    original_audio_path = Path(original_audio_path)
+    dubbing_audio_path = Path(dubbing_audio_path)
+    subtitle_path = Path(subtitle_path)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # FFmpeg command to mix audio and add subtitle
+    # Convert Windows backslashes to forward slashes for FFmpeg compatibility
+    # Escape the colon in Windows drive letter (e.g., C: -> C\:)
+    subtitle_path_str = str(subtitle_path).replace("\\", "/")
+    # Escape drive letter colon for Windows (C: -> C\:)
+    if len(subtitle_path_str) > 1 and subtitle_path_str[1] == ":":
+        subtitle_path_str = subtitle_path_str[0] + "\\:" + subtitle_path_str[2:]
+    subtitle_filter = f"subtitles='{subtitle_path_str}'"
+
+    cmd = [
+        get_ffmpeg_path(),
+        "-i", str(video_path),
+        "-i", str(dubbing_audio_path),
+        "-i", str(original_audio_path),
+        "-filter_complex",
+        f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2[aout]",
+        "-vf", subtitle_filter,
+        "-map", "0:v",
+        "-map", "[aout]",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "23",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-y",
+        str(output_path)
+    ]
+
+    subprocess.run(cmd, capture_output=True, check=True)
+    return output_path
