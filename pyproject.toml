@@ -12,7 +12,7 @@ dependencies = [
     "openai-whisper>=20250625",
     "openai>=1.0.0",
     "edge-tts>=7.2.7",
-    "piper-tts>=1.0.0",
+    "piper-tts>=1.4.1",
     "python-dotenv>=1.0.0",
 ]
 
