@@ -32,7 +32,10 @@ def get_platform_config(platform: str) -> PlatformConfig:
 @dataclass
 class TTSConfig:
     """TTS configuration."""
-    voice: str = "zh_CN-huayan-medium"
+    engine: str = "edge"  # "edge" (default), "coqui", or "piper"
+    voice: str = "zh-CN-XiaoxiaoNeural"  # Edge TTS default (Chinese female)
+    coqui_voice: str = "tts_models/zh-CN/baker/tacotron2-DDC"  # Coqui fallback
+    piper_voice: str = "zh_CN-huayan-medium"  # Piper fallback
     whisper_model: str = "small"
 
 
@@ -65,6 +68,9 @@ def get_api_config() -> APIConfig:
 def get_tts_config() -> TTSConfig:
     """Get TTS configuration from environment."""
     return TTSConfig(
-        voice=os.environ.get("PIPER_VOICE", "zh_CN-huayan-medium"),
+        engine=os.environ.get("TTS_ENGINE", "edge"),
+        voice=os.environ.get("TTS_VOICE", "zh-CN-XiaoxiaoNeural"),
+        coqui_voice=os.environ.get("COQUI_VOICE", "tts_models/zh-CN/baker/tacotron2-DDC"),
+        piper_voice=os.environ.get("PIPER_VOICE", "zh_CN-huayan-medium"),
         whisper_model=os.environ.get("WHISPER_MODEL", "small"),
     )

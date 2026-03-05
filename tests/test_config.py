@@ -47,17 +47,26 @@ def test_invalid_platform_raises():
 def test_tts_config_defaults():
     """Test TTSConfig has correct defaults."""
     config = TTSConfig()
-    assert config.voice == "zh_CN-huayan-medium"
+    assert config.engine == "edge"
+    assert config.voice == "zh-CN-XiaoxiaoNeural"
+    assert config.coqui_voice == "tts_models/zh-CN/baker/tacotron2-DDC"
+    assert config.piper_voice == "zh_CN-huayan-medium"
     assert config.whisper_model == "small"
 
 
 def test_tts_config_from_env(monkeypatch):
     """Test TTSConfig reads from environment variables."""
+    monkeypatch.setenv("TTS_ENGINE", "piper")
+    monkeypatch.setenv("TTS_VOICE", "zh-CN-YunxiNeural")
+    monkeypatch.setenv("COQUI_VOICE", "tts_models/zh-CN/custom")
     monkeypatch.setenv("PIPER_VOICE", "zh_CN-male-medium")
     monkeypatch.setenv("WHISPER_MODEL", "medium")
 
     config = get_tts_config()
-    assert config.voice == "zh_CN-male-medium"
+    assert config.engine == "piper"
+    assert config.voice == "zh-CN-YunxiNeural"
+    assert config.coqui_voice == "tts_models/zh-CN/custom"
+    assert config.piper_voice == "zh_CN-male-medium"
     assert config.whisper_model == "medium"
 
 

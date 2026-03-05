@@ -11,3 +11,6 @@ API Key：sk-9094530432844025b91b543d6075c210
 model：glm-5
 
 调用glm-5的API Key写在.env文件里，.env文件和docs文件夹不要推到github的代码仓库
+
+
+Piper TTS生成的音频效果不太好，请保留使用Piper TTS生成音频的功能、作为备选项，增加使用Coqui TTS（https://github.com/coqui-ai/TTS/）生成音频的功能、作为默认选项

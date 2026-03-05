@@ -48,8 +48,14 @@ from recut.subtitle import generate_srt, align_subtitle
     "--m3u8-url",
     help="Direct m3u8 URL (skip Kickstarter scraping)"
 )
+@click.option(
+    "--tts-engine",
+    type=click.Choice(["edge", "coqui", "piper"]),
+    default=None,
+    help="TTS engine to use (default: edge)"
+)
 @click.version_option(version=__version__)
-def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url: str | None):
+def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url: str | None, tts_engine: str | None):
     """Download Kickstarter video and create a 25-second social media short.
 
     URL: Kickstarter project URL (ignored if --m3u8-url is provided)
@@ -171,10 +177,10 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
             raise SystemExit(1)
 
         # Generate Chinese TTS audio
-        click.echo("Generating Chinese TTS audio...")
+        click.echo(f"Generating Chinese TTS audio (engine: {tts_engine or tts_config.engine})...")
         dubbing_path = tmpdir / "dubbing.wav"
         try:
-            generate_audio(chinese_script, dubbing_path, voice=tts_config.voice)
+            generate_audio(chinese_script, dubbing_path, engine=tts_engine)
         except Exception as e:
             click.echo(f"Error generating TTS: {e}", err=True)
             raise SystemExit(1)
