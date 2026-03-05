@@ -109,7 +109,11 @@ def merge_video_audio_subtitle(
     dubbing_volume: float = 1.0,
     original_volume: float = 0.3
 ) -> Path:
-    """Merge video with audio tracks and subtitle."""
+    """Merge video with audio tracks and subtitle.
+
+    Uses -shortest to ensure output duration matches video length,
+    trimming any excess audio if dubbing is longer than video.
+    """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -131,7 +135,9 @@ def merge_video_audio_subtitle(
         "-map", "0:v", "-map", "[aout]",
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart", "-y", str(output_path)
+        "-movflags", "+faststart",
+        "-shortest",  # Output duration matches shortest input (video)
+        "-y", str(output_path)
     ])
 
     return output_path
