@@ -9,11 +9,24 @@ import click
 
 from recut import __version__
 from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration
-from recut.config import get_platform_config, PLATFORMS
+from recut.config import (
+    get_platform_config,
+    PLATFORMS,
+    load_dotenv_config,
+    get_api_config,
+    get_tts_config,
+)
 from recut.downloader import check_ffmpeg, download_and_merge_m3u8, FFMPEG_INSTALL_MSG
-from recut.editor import create_short
+from recut.editor import (
+    create_short,
+    extract_audio_for_mixing,
+    merge_video_audio_subtitle,
+)
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
 from recut.transcriber import extract_audio, transcribe_audio, save_transcript
+from recut.translator import translate_and_refine
+from recut.tts import generate_audio
+from recut.subtitle import generate_srt, align_subtitle
 
 
 @click.command()
@@ -41,6 +54,15 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
 
     URL: Kickstarter project URL (ignored if --m3u8-url is provided)
     """
+    # Load environment variables
+    load_dotenv_config()
+
+    # Check API key
+    api_config = get_api_config()
+    if not api_config.yuanjing_api_key:
+        click.echo("Error: YUANJING_API_KEY not set. Please set it in .env file.", err=True)
+        raise SystemExit(1)
+
     # Check ffmpeg
     if not check_ffmpeg():
         click.echo(f"Error: {FFMPEG_INSTALL_MSG}", err=True)
@@ -48,6 +70,7 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
 
     output_path = Path(output)
     config = get_platform_config(platform)
+    tts_config = get_tts_config()
 
     # Use direct m3u8 URL if provided, otherwise scrape from Kickstarter
     if not m3u8_url:
@@ -126,12 +149,89 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
             click.echo(f"Error saving transcript: {e}", err=True)
             raise SystemExit(1)
 
+        # Translate and refine to Chinese script
+        click.echo("Translating and refining to Chinese script...")
+        try:
+            chinese_script = translate_and_refine(
+                transcript,
+                api_key=api_config.yuanjing_api_key,
+                base_url=api_config.yuanjing_base_url
+            )
+        except Exception as e:
+            click.echo(f"Error translating: {e}", err=True)
+            raise SystemExit(1)
+
+        # Save Chinese script
+        chinese_script_path = output_path.with_stem(output_path.stem + "_chinese").with_suffix(".md")
+        click.echo(f"Saving Chinese script to: {chinese_script_path}")
+        try:
+            save_transcript(chinese_script, chinese_script_path)
+        except Exception as e:
+            click.echo(f"Error saving Chinese script: {e}", err=True)
+            raise SystemExit(1)
+
+        # Generate Chinese TTS audio
+        click.echo("Generating Chinese TTS audio...")
+        dubbing_path = tmpdir / "dubbing.wav"
+        try:
+            generate_audio(chinese_script, dubbing_path, voice=tts_config.voice)
+        except Exception as e:
+            click.echo(f"Error generating TTS: {e}", err=True)
+            raise SystemExit(1)
+
+        # Generate SRT subtitles from dubbing audio
+        click.echo("Generating subtitles...")
+        srt_path = tmpdir / "subtitle.srt"
+        try:
+            generate_srt(dubbing_path, srt_path, model=tts_config.whisper_model)
+        except Exception as e:
+            click.echo(f"Error generating subtitles: {e}", err=True)
+            raise SystemExit(1)
+
+        # Align subtitles with Chinese script
+        click.echo("Aligning subtitles...")
+        aligned_srt_path = tmpdir / "aligned.srt"
+        try:
+            align_subtitle(srt_path, chinese_script, aligned_srt_path)
+        except Exception as e:
+            click.echo(f"Error aligning subtitles: {e}", err=True)
+            raise SystemExit(1)
+
+        # Extract original audio for mixing
+        click.echo("Extracting original audio for mixing...")
+        original_audio_path = tmpdir / "original.wav"
+        try:
+            extract_audio_for_mixing(downloaded_video, original_audio_path)
+        except Exception as e:
+            click.echo(f"Error extracting original audio: {e}", err=True)
+            raise SystemExit(1)
+
+        # Merge video + original audio + dubbing + subtitles
+        click.echo("Merging video with dubbing and subtitles...")
+        final_output_path = output_path.with_stem(output_path.stem + "_final")
+        try:
+            merge_video_audio_subtitle(
+                output_path,
+                original_audio_path,
+                dubbing_path,
+                aligned_srt_path,
+                final_output_path
+            )
+        except Exception as e:
+            click.echo(f"Error merging: {e}", err=True)
+            raise SystemExit(1)
+
+        # Save subtitle file
+        final_srt_path = output_path.with_suffix(".srt")
+        click.echo(f"Saving subtitles to: {final_srt_path}")
+        shutil.copy2(aligned_srt_path, final_srt_path)
+
         # Save original downloaded video with "_orig" suffix
         orig_path = output_path.with_stem(output_path.stem + "_orig")
         click.echo(f"Saving original video to: {orig_path}")
         shutil.copy2(downloaded_video, orig_path)
 
-    click.echo(f"Done! Output saved to: {output_path}")
+    click.echo(f"Done! Output saved to: {final_output_path}")
 
 
 if __name__ == "__main__":
