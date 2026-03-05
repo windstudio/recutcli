@@ -244,10 +244,10 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
         click.echo(f"Saving subtitles to: {final_srt_path}")
         shutil.copy2(aligned_srt_path, final_srt_path)
 
-        # Save original downloaded video with "_orig" suffix
-        orig_path = output_path.with_stem(output_path.stem + "_orig")
-        click.echo(f"Saving original video to: {orig_path}")
-        shutil.copy2(downloaded_video, orig_path)
+        # Save original downloaded video with "_raw" suffix
+        raw_path = output_path.with_stem(output_path.stem + "_raw")
+        click.echo(f"Saving original video to: {raw_path}")
+        shutil.copy2(downloaded_video, raw_path)
 
     click.echo(f"Done! Output saved to: {final_output_path}")
 
