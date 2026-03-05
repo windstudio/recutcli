@@ -71,12 +71,15 @@ def align_subtitle(
     """Align subtitle text with expected text, preserving timestamps.
 
     This function takes an SRT file with timestamps from Whisper transcription
-    and replaces the text with the expected correct text, distributing it
-    proportionally across the segments.
+    and replaces the text with the expected correct text.
+
+    The expected_text can be:
+    - Multi-line format (preferred): Each line becomes one subtitle segment
+    - Single-line format: Characters are distributed proportionally by duration
 
     Args:
         srt_path: Path to input SRT file
-        expected_text: Expected correct text
+        expected_text: Expected correct text (can be multi-line for better segmentation)
         output_path: Path to output SRT file
 
     Returns:
@@ -90,15 +93,14 @@ def align_subtitle(
     content = srt_path.read_text(encoding="utf-8")
     blocks = content.strip().split("\n\n")
 
-    # Calculate total duration from timestamps
-    total_duration = 0.0
+    # Parse segments info
     segments_info = []
+    total_duration = 0.0
     for block in blocks:
         lines = block.strip().split("\n")
-        if len(lines) >= 3:
+        if len(lines) >= 2:
             timestamp = lines[1]
             try:
-                # Parse timestamps (format: HH:MM:SS,mmm --> HH:MM:SS,mmm)
                 start_str, end_str = timestamp.split(" --> ")
                 start = _parse_timestamp(start_str.strip())
                 end = _parse_timestamp(end_str.strip())
@@ -115,42 +117,54 @@ def align_subtitle(
                 continue
 
     if not segments_info:
-        # Fallback: just write the expected text as single segment
         output_path.write_text(f"1\n00:00:00,000 --> 00:00:30,000\n{expected_text}\n", encoding="utf-8")
         return output_path
 
-    # Remove spaces and punctuation for better character distribution
-    # Chinese text should be distributed by characters, not words
-    chars = [c for c in expected_text if not c.isspace()]
-    total_chars = len(chars)
+    # Check if expected_text is multi-line format
+    text_lines = [line.strip() for line in expected_text.strip().split("\n") if line.strip()]
 
-    if total_chars == 0:
-        output_path.write_text("", encoding="utf-8")
-        return output_path
+    if len(text_lines) > 1:
+        # Multi-line format: each line corresponds to one subtitle segment
+        # Distribute segments proportionally
+        new_blocks = []
+        line_idx = 0
 
-    # Distribute characters proportionally by segment duration
-    new_blocks = []
-    char_idx = 0
+        for seg in segments_info:
+            if line_idx < len(text_lines):
+                new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{text_lines[line_idx]}")
+                line_idx += 1
+            else:
+                # If we run out of lines, use empty segment
+                pass  # Skip empty segments
 
-    for i, seg in enumerate(segments_info):
-        # Calculate how many characters this segment should have
-        if i < len(segments_info) - 1:
-            # Proportional to duration
-            seg_chars = int(total_chars * seg["duration"] / total_duration)
-        else:
-            # Last segment gets remaining characters
-            seg_chars = total_chars - char_idx
+        output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")
+    else:
+        # Single-line format: distribute characters proportionally by duration
+        chars = [c for c in expected_text if not c.isspace()]
+        total_chars = len(chars)
 
-        # Get characters for this segment
-        end_idx = min(char_idx + seg_chars, total_chars)
-        segment_text = "".join(chars[char_idx:end_idx])
-        char_idx = end_idx
+        if total_chars == 0:
+            output_path.write_text("", encoding="utf-8")
+            return output_path
 
-        # Skip empty segments
-        if segment_text:
-            new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{segment_text}")
+        new_blocks = []
+        char_idx = 0
 
-    output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")
+        for i, seg in enumerate(segments_info):
+            if i < len(segments_info) - 1:
+                seg_chars = int(total_chars * seg["duration"] / total_duration)
+            else:
+                seg_chars = total_chars - char_idx
+
+            end_idx = min(char_idx + seg_chars, total_chars)
+            segment_text = "".join(chars[char_idx:end_idx])
+            char_idx = end_idx
+
+            if segment_text:
+                new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{segment_text}")
+
+        output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")
+
     return output_path
 
 

@@ -197,11 +197,11 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
             click.echo(f"Error aligning subtitles: {e}", err=True)
             raise SystemExit(1)
 
-        # Extract original audio for mixing
+        # Extract original audio for mixing (from short video, not original)
         click.echo("Extracting original audio for mixing...")
         original_audio_path = tmpdir / "original.wav"
         try:
-            extract_audio_for_mixing(downloaded_video, original_audio_path)
+            extract_audio_for_mixing(output_path, original_audio_path)
         except Exception as e:
             click.echo(f"Error extracting original audio: {e}", err=True)
             raise SystemExit(1)
