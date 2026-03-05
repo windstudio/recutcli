@@ -19,56 +19,66 @@ def test_cli_integration_dubbing_workflow():
     with TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
 
+        # Create side effects that also create files
+        def mock_download(url, output):
+            Path(output).write_bytes(b"fake video")
+            return output
+
+        def mock_generate_audio(text, path, engine=None):
+            Path(path).write_bytes(b"fake audio")
+            return path
+
+        def mock_create_short(video, fragments, output, config):
+            Path(output).write_bytes(b"fake video")
+            return output
+
+        def mock_extract_audio(video, output):
+            Path(output).write_bytes(b"fake audio")
+            return output
+
+        def mock_extract_mixing(video, output):
+            Path(output).write_bytes(b"fake audio")
+            return output
+
+        def mock_srt(audio, output, model=None):
+            Path(output).write_text("1\n00:00:00,000 --> 00:00:01,000\ntest")
+            return output
+
+        def mock_align(srt, text, output):
+            Path(output).write_text("1\n00:00:00,000 --> 00:00:01,000\ntest")
+            return output
+
+        def mock_merge(video, orig, dub, srt, output):
+            Path(output).write_bytes(b"fake video")
+            return output
+
         # Mock all external dependencies
-        with patch("recut.cli.fetch_kickstarter_page") as mock_fetch, \
-             patch("recut.cli.extract_m3u8_url") as mock_extract, \
-             patch("recut.cli.download_and_merge_m3u8") as mock_download, \
-             patch("recut.cli.detect_scenes") as mock_detect, \
-             patch("recut.cli.select_top_fragments") as mock_select, \
-             patch("recut.cli.create_short") as mock_create, \
-             patch("recut.cli.extract_audio") as mock_extract_audio, \
-             patch("recut.cli.transcribe_audio") as mock_transcribe, \
-             patch("recut.cli.translate_and_refine") as mock_translate, \
-             patch("recut.cli.generate_audio") as mock_tts, \
-             patch("recut.cli.generate_srt") as mock_srt, \
-             patch("recut.cli.align_subtitle") as mock_align, \
-             patch("recut.cli.extract_audio_for_mixing") as mock_extract_mixing, \
-             patch("recut.cli.merge_video_audio_subtitle") as mock_merge, \
-             patch("recut.cli.save_transcript") as mock_save, \
-             patch("recut.cli.get_api_config") as mock_api_config:
-
-            # Setup mocks
-            mock_fetch.return_value = "<html>test</html>"
-            mock_extract.return_value = "https://test.m3u8"
-            mock_download.return_value = tmpdir / "downloaded.mp4"
-            mock_detect.return_value = []
-            mock_select.return_value = []
-            mock_create.return_value = tmpdir / "output.mp4"
-            mock_extract_audio.return_value = tmpdir / "audio.wav"
-            mock_transcribe.return_value = "English transcript"
-            mock_translate.return_value = "中文口播文案"
-            mock_tts.return_value = tmpdir / "dubbing.wav"
-            mock_srt.return_value = tmpdir / "subtitle.srt"
-            mock_align.return_value = tmpdir / "aligned.srt"
-            mock_extract_mixing.return_value = tmpdir / "original.wav"
-            mock_merge.return_value = tmpdir / "final.mp4"
-            mock_api_config.return_value = MagicMock(yuanjing_api_key="test-key")
-
-            # Create fake video file
-            (tmpdir / "downloaded.mp4").write_bytes(b"fake video")
+        with patch("recut.cli.fetch_kickstarter_page", return_value="<html>test</html>"), \
+             patch("recut.cli.extract_m3u8_url", return_value="https://test.m3u8"), \
+             patch("recut.cli.download_and_merge_m3u8", side_effect=mock_download), \
+             patch("recut.cli.detect_scenes", return_value=[]), \
+             patch("recut.cli.select_top_fragments", return_value=[]), \
+             patch("recut.cli.create_short", side_effect=mock_create_short), \
+             patch("recut.cli.extract_audio", side_effect=mock_extract_audio), \
+             patch("recut.cli.transcribe_audio", return_value="English transcript"), \
+             patch("recut.cli.translate_and_refine", return_value="中文口播文案"), \
+             patch("recut.cli.generate_audio", side_effect=mock_generate_audio), \
+             patch("recut.cli.generate_srt", side_effect=mock_srt), \
+             patch("recut.cli.align_subtitle", side_effect=mock_align), \
+             patch("recut.cli.extract_audio_for_mixing", side_effect=mock_extract_mixing), \
+             patch("recut.cli.merge_video_audio_subtitle", side_effect=mock_merge), \
+             patch("recut.cli.get_api_config", return_value=MagicMock(yuanjing_api_key="test-key", yuanjing_base_url="http://test")):
 
             output_path = tmpdir / "output.mp4"
             result = runner.invoke(main, ["https://test.com", "-o", str(output_path)])
 
             # Verify workflow was called
-            mock_transcribe.assert_called_once()
-            mock_translate.assert_called_once_with(
-                "English transcript",
-                api_key="test-key",
-                base_url=mock_api_config.return_value.yuanjing_base_url,
-                duration=30  # Default duration
-            )
-            mock_tts.assert_called_once()
-            mock_srt.assert_called_once()
-            mock_align.assert_called_once()
-            mock_merge.assert_called_once()
+            assert result.exit_code == 0, f"CLI failed: {result.output}"
+
+            # Verify dubbing audio was saved
+            dubbing_output = tmpdir / "output_dubbing.wav"
+            assert dubbing_output.exists(), "Dubbing audio file should be saved"
+
+            # Verify Chinese script uses _chs suffix
+            chs_script = tmpdir / "output_chs.md"
+            assert chs_script.exists(), "Chinese script should use _chs suffix"

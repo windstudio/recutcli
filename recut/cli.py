@@ -175,7 +175,7 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
             raise SystemExit(1)
 
         # Save Chinese script
-        chinese_script_path = output_path.with_stem(output_path.stem + "_chinese").with_suffix(".md")
+        chinese_script_path = output_path.with_stem(output_path.stem + "_chs").with_suffix(".md")
         click.echo(f"Saving Chinese script to: {chinese_script_path}")
         try:
             save_transcript(chinese_script, chinese_script_path)
@@ -191,6 +191,11 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
         except Exception as e:
             click.echo(f"Error generating TTS: {e}", err=True)
             raise SystemExit(1)
+
+        # Save TTS dubbing audio to output folder
+        dubbing_output_path = output_path.with_stem(output_path.stem + "_dubbing").with_suffix(".wav")
+        click.echo(f"Saving dubbing audio to: {dubbing_output_path}")
+        shutil.copy2(dubbing_path, dubbing_output_path)
 
         # Generate SRT subtitles from dubbing audio
         click.echo("Generating subtitles...")
