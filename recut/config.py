@@ -12,21 +12,33 @@ class PlatformConfig:
     """Video configuration for a social media platform."""
     width: int
     height: int
-    max_duration: int
+    max_duration: int  # Default max duration in seconds
 
 
+# Default platform configurations (duration can be overridden via --duration flag)
 PLATFORMS = {
-    "tiktok": PlatformConfig(width=1080, height=1920, max_duration=25),
-    "instagram": PlatformConfig(width=1080, height=1920, max_duration=25),
-    "reels": PlatformConfig(width=1080, height=1920, max_duration=25),
+    "tiktok": PlatformConfig(width=1080, height=1920, max_duration=30),
+    "instagram": PlatformConfig(width=1080, height=1920, max_duration=30),
+    "reels": PlatformConfig(width=1080, height=1920, max_duration=30),
 }
 
 
-def get_platform_config(platform: str) -> PlatformConfig:
-    """Get video configuration for a platform."""
+def get_platform_config(platform: str, duration: int | None = None) -> PlatformConfig:
+    """Get video configuration for a platform.
+
+    Args:
+        platform: Platform name (tiktok, instagram, reels)
+        duration: Custom duration in seconds (overrides default)
+
+    Returns:
+        PlatformConfig with specified or default duration
+    """
     if platform not in PLATFORMS:
         raise ValueError(f"Unknown platform: {platform}. Valid options: {list(PLATFORMS.keys())}")
-    return PLATFORMS[platform]
+    config = PLATFORMS[platform]
+    if duration is not None:
+        return PlatformConfig(width=config.width, height=config.height, max_duration=duration)
+    return config
 
 
 @dataclass

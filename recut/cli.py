@@ -54,9 +54,15 @@ from recut.subtitle import generate_srt, align_subtitle
     default=None,
     help="TTS engine to use (default: edge)"
 )
+@click.option(
+    "--duration",
+    type=int,
+    default=None,
+    help="Video duration in seconds (default: 30)"
+)
 @click.version_option(version=__version__)
-def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url: str | None, tts_engine: str | None):
-    """Download Kickstarter video and create a 25-second social media short.
+def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url: str | None, tts_engine: str | None, duration: int | None):
+    """Download Kickstarter video and create a short social media video.
 
     URL: Kickstarter project URL (ignored if --m3u8-url is provided)
     """
@@ -75,7 +81,7 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
         raise SystemExit(1)
 
     output_path = Path(output)
-    config = get_platform_config(platform)
+    config = get_platform_config(platform, duration=duration)
     tts_config = get_tts_config()
 
     # Use direct m3u8 URL if provided, otherwise scrape from Kickstarter
@@ -161,7 +167,8 @@ def main(url: str, output: str, platform: str, scene_threshold: float, m3u8_url:
             chinese_script = translate_and_refine(
                 transcript,
                 api_key=api_config.yuanjing_api_key,
-                base_url=api_config.yuanjing_base_url
+                base_url=api_config.yuanjing_base_url,
+                duration=config.max_duration
             )
         except Exception as e:
             click.echo(f"Error translating: {e}", err=True)

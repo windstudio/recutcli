@@ -204,7 +204,9 @@ def merge_video_audio_subtitle(
     # Escape drive letter colon for Windows (C: -> C\:)
     if len(subtitle_path_str) > 1 and subtitle_path_str[1] == ":":
         subtitle_path_str = subtitle_path_str[0] + "\\:" + subtitle_path_str[2:]
-    subtitle_filter = f"subtitles='{subtitle_path_str}'"
+    # Force style: position subtitle at bottom-center, slightly above the edge
+    # MarginV=60 moves subtitles up from bottom (in pixels) to avoid UI overlap
+    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
 
     cmd = [
         get_ffmpeg_path(),

@@ -65,7 +65,8 @@ def test_cli_integration_dubbing_workflow():
             mock_translate.assert_called_once_with(
                 "English transcript",
                 api_key="test-key",
-                base_url=mock_api_config.return_value.yuanjing_base_url
+                base_url=mock_api_config.return_value.yuanjing_base_url,
+                duration=30  # Default duration
             )
             mock_tts.assert_called_once()
             mock_srt.assert_called_once()

@@ -63,6 +63,53 @@ def test_srt_format():
             assert "测试文本" in lines[2]
 
 
+def test_split_by_punctuation():
+    """Test that _split_by_punctuation splits text at Chinese punctuation."""
+    from recut.subtitle import _split_by_punctuation
+
+    # Test with various Chinese punctuation
+    text = "这是第一句，这是第二句。这是第三句！"
+    segments = _split_by_punctuation(text)
+    assert len(segments) == 3
+    assert segments[0] == "这是第一句，"
+    assert segments[1] == "这是第二句。"
+    assert segments[2] == "这是第三句！"
+
+
+def test_split_by_punctuation_no_trailing():
+    """Test _split_by_punctuation with text not ending in punctuation."""
+    from recut.subtitle import _split_by_punctuation
+
+    text = "第一句，第二句没有标点"
+    segments = _split_by_punctuation(text)
+    assert len(segments) == 2
+    assert segments[0] == "第一句，"
+    assert segments[1] == "第二句没有标点"
+
+
+def test_align_subtitle_with_punctuation_split():
+    """Test that align_subtitle splits text by punctuation for display."""
+    from recut.subtitle import align_subtitle
+
+    with TemporaryDirectory() as tmpdir:
+        srt_path = Path(tmpdir) / "input.srt"
+        srt_path.write_text("""1
+00:00:00,000 --> 00:00:05,000
+错误文字
+""", encoding="utf-8")
+        output_path = Path(tmpdir) / "output.srt"
+
+        # Text with punctuation should be split into multiple display lines
+        expected_text = "第一句，第二句。第三句！"
+        result = align_subtitle(srt_path, expected_text, output_path)
+
+        content = output_path.read_text(encoding="utf-8")
+        # Should contain SRT line break character \N
+        assert "\\N" in content
+        assert "第一句，" in content
+        assert "第二句。" in content
+
+
 def test_align_subtitle_corrects_text():
     """Test that align_subtitle creates segments per line with proportional timing."""
     from recut.subtitle import align_subtitle

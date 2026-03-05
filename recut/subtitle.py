@@ -63,6 +63,34 @@ def generate_srt(
         raise RuntimeError(f"Subtitle generation failed: {e}")
 
 
+def _split_by_punctuation(text: str) -> list[str]:
+    """Split text by Chinese punctuation marks for better subtitle display.
+
+    Args:
+        text: Text to split
+
+    Returns:
+        List of text segments, each ending with punctuation (except possibly the last)
+    """
+    # Chinese punctuation marks that should end a subtitle line
+    punctuations = "，。！？、；：""''）】》"
+
+    segments = []
+    current = ""
+
+    for char in text:
+        current += char
+        if char in punctuations:
+            segments.append(current)
+            current = ""
+
+    # Add remaining text if any
+    if current.strip():
+        segments.append(current)
+
+    return segments
+
+
 def align_subtitle(
     srt_path: Path,
     expected_text: str,
@@ -75,6 +103,8 @@ def align_subtitle(
 
     Each line in expected_text becomes one subtitle segment, with time
     distributed proportionally based on character count.
+    Within each segment, text is split by Chinese punctuation for proper
+    line breaks in display.
 
     Args:
         srt_path: Path to input SRT file (used for total duration)
@@ -133,7 +163,12 @@ def align_subtitle(
         start_ts = _format_timestamp(start_time)
         end_ts = _format_timestamp(end_time)
 
-        new_blocks.append(f"{i + 1}\n{start_ts} --> {end_ts}\n{line}")
+        # Split line by punctuation for proper display line breaks
+        segments = _split_by_punctuation(line)
+        # Join segments with \N (SRT line break)
+        display_text = "\\N".join(segments)
+
+        new_blocks.append(f"{i + 1}\n{start_ts} --> {end_ts}\n{display_text}")
         current_time = end_time
 
     output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")

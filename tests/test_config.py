@@ -22,21 +22,29 @@ def test_get_tiktok_config():
     config = get_platform_config("tiktok")
     assert config.width == 1080
     assert config.height == 1920
-    assert config.max_duration == 25
+    assert config.max_duration == 30  # Default duration changed to 30
 
 
 def test_get_instagram_config():
     config = get_platform_config("instagram")
     assert config.width == 1080
     assert config.height == 1920
-    assert config.max_duration == 25
+    assert config.max_duration == 30
 
 
 def test_get_reels_config():
     config = get_platform_config("reels")
     assert config.width == 1080
     assert config.height == 1920
-    assert config.max_duration == 25
+    assert config.max_duration == 30
+
+
+def test_custom_duration():
+    """Test that custom duration overrides default."""
+    config = get_platform_config("tiktok", duration=60)
+    assert config.width == 1080
+    assert config.height == 1920
+    assert config.max_duration == 60
 
 
 def test_invalid_platform_raises():
