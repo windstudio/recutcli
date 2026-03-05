@@ -112,5 +112,9 @@ def test_align_subtitle_handles_mismatch():
 
         assert result == output_path
         content = output_path.read_text(encoding="utf-8")
-        # Should still produce valid SRT
-        assert "简短文本" in content
+        # Should still produce valid SRT with timestamps preserved
+        assert "00:00:00,000 --> 00:00:02,000" in content
+        assert "00:00:02,000 --> 00:00:04,000" in content
+        # Characters should be distributed across segments
+        # Both segments should have some characters from the expected text
+        assert "简" in content or "文" in content

@@ -70,6 +70,10 @@ def align_subtitle(
 ) -> Path:
     """Align subtitle text with expected text, preserving timestamps.
 
+    This function takes an SRT file with timestamps from Whisper transcription
+    and replaces the text with the expected correct text, distributing it
+    proportionally across the segments.
+
     Args:
         srt_path: Path to input SRT file
         expected_text: Expected correct text
@@ -86,27 +90,80 @@ def align_subtitle(
     content = srt_path.read_text(encoding="utf-8")
     blocks = content.strip().split("\n\n")
 
-    # Split expected text into segments (simple approach: distribute by word count)
-    words = expected_text.split()
-    segment_count = len(blocks)
-
-    # Distribute words across segments
-    words_per_segment = max(1, len(words) // segment_count) if segment_count > 0 else len(words)
-
-    # Build new SRT
-    new_blocks = []
-    for i, block in enumerate(blocks):
+    # Calculate total duration from timestamps
+    total_duration = 0.0
+    segments_info = []
+    for block in blocks:
         lines = block.strip().split("\n")
         if len(lines) >= 3:
-            index = lines[0]
             timestamp = lines[1]
+            try:
+                # Parse timestamps (format: HH:MM:SS,mmm --> HH:MM:SS,mmm)
+                start_str, end_str = timestamp.split(" --> ")
+                start = _parse_timestamp(start_str.strip())
+                end = _parse_timestamp(end_str.strip())
+                duration = end - start
+                total_duration += duration
+                segments_info.append({
+                    "index": lines[0],
+                    "timestamp": timestamp,
+                    "duration": duration,
+                    "start": start,
+                    "end": end
+                })
+            except Exception:
+                continue
 
-            # Get text segment
-            start_idx = i * words_per_segment
-            end_idx = start_idx + words_per_segment if i < segment_count - 1 else len(words)
-            segment_text = " ".join(words[start_idx:end_idx])
+    if not segments_info:
+        # Fallback: just write the expected text as single segment
+        output_path.write_text(f"1\n00:00:00,000 --> 00:00:30,000\n{expected_text}\n", encoding="utf-8")
+        return output_path
 
-            new_blocks.append(f"{index}\n{timestamp}\n{segment_text}")
+    # Remove spaces and punctuation for better character distribution
+    # Chinese text should be distributed by characters, not words
+    chars = [c for c in expected_text if not c.isspace()]
+    total_chars = len(chars)
+
+    if total_chars == 0:
+        output_path.write_text("", encoding="utf-8")
+        return output_path
+
+    # Distribute characters proportionally by segment duration
+    new_blocks = []
+    char_idx = 0
+
+    for i, seg in enumerate(segments_info):
+        # Calculate how many characters this segment should have
+        if i < len(segments_info) - 1:
+            # Proportional to duration
+            seg_chars = int(total_chars * seg["duration"] / total_duration)
+        else:
+            # Last segment gets remaining characters
+            seg_chars = total_chars - char_idx
+
+        # Get characters for this segment
+        end_idx = min(char_idx + seg_chars, total_chars)
+        segment_text = "".join(chars[char_idx:end_idx])
+        char_idx = end_idx
+
+        # Skip empty segments
+        if segment_text:
+            new_blocks.append(f"{seg['index']}\n{seg['timestamp']}\n{segment_text}")
 
     output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")
     return output_path
+
+
+def _parse_timestamp(timestamp: str) -> float:
+    """Parse SRT timestamp to seconds.
+
+    Args:
+        timestamp: SRT timestamp string (HH:MM:SS,mmm)
+
+    Returns:
+        Time in seconds
+    """
+    timestamp = timestamp.strip()
+    time_part, millis = timestamp.rsplit(",", 1)
+    hours, minutes, seconds = time_part.split(":")
+    return int(hours) * 3600 + int(minutes) * 60 + int(seconds) + int(millis) / 1000
