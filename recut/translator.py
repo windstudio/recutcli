@@ -204,3 +204,31 @@ def translate_and_refine(
         return response.choices[0].message.content
     except Exception as e:
         raise RuntimeError(f"Translation failed: {e}")
+
+
+def save_chinese_script(output_path, metadata: dict) -> None:
+    """Save Chinese script with metadata to markdown file.
+
+    Args:
+        output_path: Path to save the markdown file
+        metadata: dict with keys: title, transcript, tags
+    """
+    from pathlib import Path
+
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Format tags as #tag1 #tag2 ...
+    tags_formatted = " ".join(f"#{tag}" for tag in metadata["tags"])
+
+    content = f"""# Title
+{metadata["title"]}
+
+# Transcript
+{metadata["transcript"]}
+
+# Tags
+{tags_formatted}
+"""
+
+    path.write_text(content, encoding="utf-8")

@@ -1,6 +1,8 @@
 # tests/test_translator.py
 """Tests for translator module."""
 
+import tempfile
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -224,3 +226,26 @@ def test_parse_metadata_response_tags_with_spaces():
     response = "---TITLE---\n标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签1 , 标签2 , 标签3"
     result = parse_metadata_response(response)
     assert result["tags"] == ["标签1", "标签2", "标签3"]
+
+
+# Tests for save_chinese_script
+
+def test_save_chinese_script():
+    """Test saving Chinese script with title, transcript, and tags."""
+    from recut.translator import save_chinese_script
+
+    metadata = {
+        "title": "测试标题",
+        "transcript": "第一句文案\n第二句文案\n第三句文案",
+        "tags": ["键盘", "机械键盘", "Keytron", "游戏外设", "办公设备", "无线键盘", "RGB灯光", "轻薄便携"]
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "test_chs.md"
+        save_chinese_script(output_path, metadata)
+
+        content = output_path.read_text(encoding="utf-8")
+
+        assert "# Title\n测试标题" in content
+        assert "# Transcript\n第一句文案" in content
+        assert "# Tags\n#键盘 #机械键盘 #Keytron" in content
