@@ -14,7 +14,7 @@ from recut.downloader import check_ffmpeg, download_and_merge_m3u8, FFMPEG_INSTA
 from recut.editor import create_short, extract_audio_for_mixing, merge_video_audio_subtitle
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
 from recut.transcriber import extract_audio, transcribe_audio, save_transcript
-from recut.translator import translate_and_refine
+from recut.translator import translate_and_generate_metadata, save_chinese_script
 from recut.tts import generate_audio
 from recut.subtitle import generate_srt, align_subtitle
 
@@ -34,6 +34,7 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 @click.option("--m3u8-url", help="Direct m3u8 URL (skip Kickstarter scraping)")
 @click.option("--tts-engine", type=click.Choice(["edge", "coqui", "piper"]), default=None, help="TTS engine")
 @click.option("--duration", type=int, default=None, help="Video duration in seconds (default: 30)")
+@click.option("--title", help="English title from video page (optional)")
 @click.version_option(version=__version__)
 def main(
     url: str,
@@ -42,14 +43,15 @@ def main(
     scene_threshold: float,
     m3u8_url: str | None,
     tts_engine: str | None,
-    duration: int | None
+    duration: int | None,
+    title: str | None
 ):
     """Download Kickstarter video and create a short social media video."""
     load_dotenv_config()
 
     api_config = get_api_config()
     if not api_config.llm_api_key:
-        _exit_on_error("YUANJING_API_KEY not set. Please set it in .env file.")
+        _exit_on_error("LLM_API_KEY not set. Please set it in .env file.")
 
     if not check_ffmpeg():
         _exit_on_error(FFMPEG_INSTALL_MSG)
@@ -124,24 +126,29 @@ def main(
         except Exception as e:
             _exit_on_error("saving transcript", e)
 
-        # Translate to Chinese
-        click.echo("Translating and refining to Chinese script...")
+        # Translate to Chinese and generate metadata
+        click.echo("Generating Chinese script with metadata...")
         try:
-            chinese_script = translate_and_refine(
+            metadata = translate_and_generate_metadata(
                 transcript,
                 api_key=api_config.llm_api_key,
                 base_url=api_config.llm_api_url,
-                duration=config.max_duration
+                model=api_config.llm_model,
+                duration=config.max_duration,
+                english_title=title
             )
         except Exception as e:
-            _exit_on_error("translating", e)
+            _exit_on_error("generating metadata", e)
 
         chs_script_path = output_path.with_stem(output_path.stem + "_chs").with_suffix(".md")
         click.echo(f"Saving Chinese script to: {chs_script_path}")
         try:
-            save_transcript(chinese_script, chs_script_path)
+            save_chinese_script(chs_script_path, metadata)
         except Exception as e:
             _exit_on_error("saving Chinese script", e)
+
+        # Extract transcript for TTS
+        chinese_script = metadata["transcript"]
 
         # Generate TTS
         click.echo(f"Generating Chinese TTS audio (engine: {tts_engine or tts_config.engine})...")

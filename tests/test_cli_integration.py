@@ -52,6 +52,17 @@ def test_cli_integration_dubbing_workflow():
             Path(output).write_bytes(b"fake video")
             return output
 
+        def mock_save_chinese_script(path, metadata):
+            Path(path).write_text("# Title\nTest\n\n# Transcript\nTest transcript\n\n# Tags\n#tag1 #tag2\n")
+            return path
+
+        # Mock metadata response
+        mock_metadata = {
+            "title": "测试标题",
+            "transcript": "中文口播文案",
+            "tags": ["标签1", "标签2"]
+        }
+
         # Mock all external dependencies
         with patch("recut.cli.fetch_kickstarter_page", return_value="<html>test</html>"), \
              patch("recut.cli.extract_m3u8_url", return_value="https://test.m3u8"), \
@@ -61,13 +72,14 @@ def test_cli_integration_dubbing_workflow():
              patch("recut.cli.create_short", side_effect=mock_create_short), \
              patch("recut.cli.extract_audio", side_effect=mock_extract_audio), \
              patch("recut.cli.transcribe_audio", return_value="English transcript"), \
-             patch("recut.cli.translate_and_refine", return_value="中文口播文案"), \
+             patch("recut.cli.translate_and_generate_metadata", return_value=mock_metadata), \
+             patch("recut.cli.save_chinese_script", side_effect=mock_save_chinese_script), \
              patch("recut.cli.generate_audio", side_effect=mock_generate_audio), \
              patch("recut.cli.generate_srt", side_effect=mock_srt), \
              patch("recut.cli.align_subtitle", side_effect=mock_align), \
              patch("recut.cli.extract_audio_for_mixing", side_effect=mock_extract_mixing), \
              patch("recut.cli.merge_video_audio_subtitle", side_effect=mock_merge), \
-             patch("recut.cli.get_api_config", return_value=MagicMock(llm_api_key="test-key", llm_api_url="http://test")):
+             patch("recut.cli.get_api_config", return_value=MagicMock(llm_api_key="test-key", llm_api_url="http://test", llm_model="test-model")):
 
             output_path = tmpdir / "output.mp4"
             result = runner.invoke(main, ["https://test.com", "-o", str(output_path)])
