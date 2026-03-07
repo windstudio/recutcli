@@ -87,6 +87,8 @@ def test_api_config_defaults():
 
 def test_api_config_from_env(monkeypatch):
     """Test APIConfig reads from environment variables."""
+    # Clear LLM_API_KEY first to test YUANJING_API_KEY fallback
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
     monkeypatch.setenv("YUANJING_API_KEY", "test-key")
 
     config = get_api_config()
