@@ -1,6 +1,8 @@
 # recut/translator.py
 """Translation and content refinement using GLM-5 API."""
 
+from pathlib import Path
+
 from openai import OpenAI
 
 
@@ -206,14 +208,21 @@ def translate_and_refine(
         raise RuntimeError(f"Translation failed: {e}")
 
 
-def save_chinese_script(output_path, metadata: dict) -> None:
+def save_chinese_script(output_path: str | Path, metadata: dict) -> None:
     """Save Chinese script with metadata to markdown file.
 
     Args:
         output_path: Path to save the markdown file
         metadata: dict with keys: title, transcript, tags
+
+    Raises:
+        ValueError: If metadata is missing required keys
     """
-    from pathlib import Path
+    # Validate required keys
+    required_keys = ["title", "transcript", "tags"]
+    missing = [k for k in required_keys if k not in metadata]
+    if missing:
+        raise ValueError(f"metadata missing required keys: {missing}")
 
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
