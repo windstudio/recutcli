@@ -26,6 +26,7 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 - `--scene-threshold 0.3` - Scene change sensitivity (default: 0.3)
 - `--m3u8-url URL` - Direct m3u8 URL (bypass Kickstarter scraping)
 - `--tts-engine {edge,coqui,piper}` - TTS engine for Chinese dubbing (default: edge)
+- `--title TITLE` - English title from video page (optional, used for generating Chinese title)
 
 ### Output Files
 
@@ -59,11 +60,23 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 --m3u8-url "https://v2.
 Create a `.env` file in the project directory:
 
 ```env
-YUANJING_API_KEY=your_api_key_here
+LLM_API_KEY=your_api_key_here
+LLM_API_URL=https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1
+LLM_MODEL=glm-5
 TTS_ENGINE=edge
 TTS_VOICE=zh-CN-XiaoxiaoNeural
 WHISPER_MODEL=small
 ```
+
+### LLM Configuration
+
+The tool supports any OpenAI-compatible API:
+
+- **LLM_API_KEY** - Your API key (required)
+- **LLM_API_URL** - API endpoint URL (default: Yuanjing API)
+- **LLM_MODEL** - Model name (default: glm-5)
+
+> **Note:** For backward compatibility, `YUANJING_API_KEY` is still supported.
 
 ### TTS Engines
 
