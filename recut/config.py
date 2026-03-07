@@ -54,8 +54,9 @@ class TTSConfig:
 @dataclass
 class APIConfig:
     """API configuration for external services."""
-    yuanjing_api_key: str = ""
-    yuanjing_base_url: str = "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"
+    llm_api_key: str = ""
+    llm_api_url: str = "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"
+    llm_model: str = "glm-5"
 
 
 def load_dotenv_config(env_path: Path | str | None = None) -> None:
@@ -71,9 +72,14 @@ def load_dotenv_config(env_path: Path | str | None = None) -> None:
 
 
 def get_api_config() -> APIConfig:
-    """Get API configuration from environment."""
+    """Get API configuration from environment.
+
+    Supports both new LLM_* vars and legacy YUANJING_API_KEY for backward compatibility.
+    """
     return APIConfig(
-        yuanjing_api_key=os.environ.get("YUANJING_API_KEY", ""),
+        llm_api_key=os.environ.get("LLM_API_KEY") or os.environ.get("YUANJING_API_KEY", ""),
+        llm_api_url=os.environ.get("LLM_API_URL", "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"),
+        llm_model=os.environ.get("LLM_MODEL", "glm-5"),
     )
 
 

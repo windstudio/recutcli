@@ -48,7 +48,7 @@ def main(
     load_dotenv_config()
 
     api_config = get_api_config()
-    if not api_config.yuanjing_api_key:
+    if not api_config.llm_api_key:
         _exit_on_error("YUANJING_API_KEY not set. Please set it in .env file.")
 
     if not check_ffmpeg():
@@ -129,8 +129,8 @@ def main(
         try:
             chinese_script = translate_and_refine(
                 transcript,
-                api_key=api_config.yuanjing_api_key,
-                base_url=api_config.yuanjing_base_url,
+                api_key=api_config.llm_api_key,
+                base_url=api_config.llm_api_url,
                 duration=config.max_duration
             )
         except Exception as e:

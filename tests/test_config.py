@@ -81,8 +81,8 @@ def test_tts_config_from_env(monkeypatch):
 def test_api_config_defaults():
     """Test APIConfig has correct defaults."""
     config = APIConfig()
-    assert config.yuanjing_api_key == ""
-    assert "ai-yuanjing" in config.yuanjing_base_url
+    assert config.llm_api_key == ""
+    assert "ai-yuanjing" in config.llm_api_url
 
 
 def test_api_config_from_env(monkeypatch):
@@ -90,8 +90,8 @@ def test_api_config_from_env(monkeypatch):
     monkeypatch.setenv("YUANJING_API_KEY", "test-key")
 
     config = get_api_config()
-    assert config.yuanjing_api_key == "test-key"
-    assert "ai-yuanjing" in config.yuanjing_base_url
+    assert config.llm_api_key == "test-key"
+    assert "ai-yuanjing" in config.llm_api_url
 
 
 def test_load_dotenv():
@@ -111,3 +111,40 @@ def test_load_dotenv():
 
         # Cleanup
         os.environ.pop("YUANJING_API_KEY", None)
+
+
+def test_api_config_reads_llm_env_vars(monkeypatch):
+    """Test that APIConfig reads LLM_API_KEY, LLM_API_URL, LLM_MODEL from env."""
+    monkeypatch.setenv("LLM_API_KEY", "test-key-123")
+    monkeypatch.setenv("LLM_API_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("LLM_MODEL", "gpt-4")
+
+    config = get_api_config()
+
+    assert config.llm_api_key == "test-key-123"
+    assert config.llm_api_url == "https://api.example.com/v1"
+    assert config.llm_model == "gpt-4"
+
+
+def test_api_config_fallback_to_yuanjing_key(monkeypatch):
+    """Test backward compatibility: fallback to YUANJING_API_KEY if LLM_API_KEY not set."""
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.setenv("YUANJING_API_KEY", "yuanjing-key-456")
+
+    config = get_api_config()
+
+    assert config.llm_api_key == "yuanjing-key-456"
+
+
+def test_api_config_default_values(monkeypatch):
+    """Test default values when no env vars set."""
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("YUANJING_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_API_URL", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+
+    config = get_api_config()
+
+    assert config.llm_api_key == ""
+    assert config.llm_api_url == "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"
+    assert config.llm_model == "glm-5"

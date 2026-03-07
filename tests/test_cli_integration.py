@@ -67,7 +67,7 @@ def test_cli_integration_dubbing_workflow():
              patch("recut.cli.align_subtitle", side_effect=mock_align), \
              patch("recut.cli.extract_audio_for_mixing", side_effect=mock_extract_mixing), \
              patch("recut.cli.merge_video_audio_subtitle", side_effect=mock_merge), \
-             patch("recut.cli.get_api_config", return_value=MagicMock(yuanjing_api_key="test-key", yuanjing_base_url="http://test")):
+             patch("recut.cli.get_api_config", return_value=MagicMock(llm_api_key="test-key", llm_api_url="http://test")):
 
             output_path = tmpdir / "output.mp4"
             result = runner.invoke(main, ["https://test.com", "-o", str(output_path)])
