@@ -129,3 +129,98 @@ def test_translate_and_generate_metadata_without_title(monkeypatch):
     assert result["title"] == "自动生成标题"
     assert result["transcript"] == "内容"
     assert result["tags"] == ["标签A", "标签B"]
+
+
+def test_translate_and_generate_metadata_raises_on_error(monkeypatch):
+    """Test that translate_and_generate_metadata raises on API error."""
+    from recut.translator import translate_and_generate_metadata
+
+    def mock_create(**kwargs):
+        raise Exception("API Error")
+
+    monkeypatch.setattr("recut.translator.OpenAI", lambda **kw: type('Client', (), {
+        'chat': type('Chat', (), {
+            'completions': type('Completions', (), {'create': mock_create})
+        })
+    })())
+
+    with pytest.raises(RuntimeError, match="Metadata generation failed"):
+        translate_and_generate_metadata("test", api_key="test-key")
+
+
+def test_translate_and_generate_metadata_empty_response(monkeypatch):
+    """Test that translate_and_generate_metadata raises on empty response."""
+    from recut.translator import translate_and_generate_metadata
+
+    def mock_create(**kwargs):
+        return type('Response', (), {
+            'choices': [type('Choice', (), {
+                'message': type('Message', (), {
+                    'content': None
+                })
+            })]
+        })()
+
+    monkeypatch.setattr("recut.translator.OpenAI", lambda **kw: type('Client', (), {
+        'chat': type('Chat', (), {
+            'completions': type('Completions', (), {'create': mock_create})
+        })
+    })())
+
+    with pytest.raises(RuntimeError, match="empty response"):
+        translate_and_generate_metadata("test", api_key="test-key")
+
+
+# Tests for parse_metadata_response
+
+def test_parse_metadata_response_normal():
+    """Test normal response parsing."""
+    from recut.translator import parse_metadata_response
+
+    response = "---TITLE---\n标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签1,标签2"
+    result = parse_metadata_response(response)
+    assert result["title"] == "标题"
+    assert result["transcript"] == "内容"
+    assert result["tags"] == ["标签1", "标签2"]
+
+
+def test_parse_metadata_response_missing_title():
+    """Test error when TITLE section missing."""
+    from recut.translator import parse_metadata_response
+
+    with pytest.raises(ValueError, match="missing TITLE"):
+        parse_metadata_response("---TRANSCRIPT---\n内容\n---TAGS---\n标签")
+
+
+def test_parse_metadata_response_missing_transcript():
+    """Test error when TRANSCRIPT section missing."""
+    from recut.translator import parse_metadata_response
+
+    with pytest.raises(ValueError, match="missing TRANSCRIPT"):
+        parse_metadata_response("---TITLE---\n标题\n---TAGS---\n标签")
+
+
+def test_parse_metadata_response_missing_tags():
+    """Test error when TAGS section missing."""
+    from recut.translator import parse_metadata_response
+
+    with pytest.raises(ValueError, match="missing TAGS"):
+        parse_metadata_response("---TITLE---\n标题\n---TRANSCRIPT---\n内容")
+
+
+def test_parse_metadata_response_empty_tags():
+    """Test handling of empty tags string."""
+    from recut.translator import parse_metadata_response
+
+    response = "---TITLE---\n标题\n---TRANSCRIPT---\n内容\n---TAGS---\n"
+    result = parse_metadata_response(response)
+    assert result["tags"] == []
+
+
+def test_parse_metadata_response_tags_with_spaces():
+    """Test tags with extra whitespace are trimmed."""
+    from recut.translator import parse_metadata_response
+
+    response = "---TITLE---\n标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签1 , 标签2 , 标签3"
+    result = parse_metadata_response(response)
+    assert result["tags"] == ["标签1", "标签2", "标签3"]

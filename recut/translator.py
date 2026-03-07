@@ -155,7 +155,10 @@ def translate_and_generate_metadata(
                 }
             ]
         )
-        return parse_metadata_response(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if not content:
+            raise RuntimeError("Metadata generation failed: empty response")
+        return parse_metadata_response(content)
     except Exception as e:
         raise RuntimeError(f"Metadata generation failed: {e}")
 
