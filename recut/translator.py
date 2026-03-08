@@ -1,9 +1,22 @@
 # recut/translator.py
 """Translation and content refinement using GLM-5 API."""
 
+from datetime import datetime
 from pathlib import Path
 
 from openai import OpenAI
+
+
+def _get_season(month: int) -> str:
+    """Get season name from month number."""
+    if month in (3, 4, 5):
+        return "春季"
+    elif month in (6, 7, 8):
+        return "夏季"
+    elif month in (9, 10, 11):
+        return "秋季"
+    else:
+        return "冬季"
 
 
 def get_metadata_generation_prompt(duration: int, english_title: str | None) -> str:
@@ -23,23 +36,36 @@ def get_metadata_generation_prompt(duration: int, english_title: str | None) -> 
     min_chars = target_chars - tolerance
     max_chars = target_chars + tolerance
 
+    # Get current month and season for seasonal tag
+    now = datetime.now()
+    current_month = f"{now.month}月"
+    season = _get_season(now.month)
+
     title_instruction = (
-        f"英文标题：{english_title}\n请将此英文标题翻译并润色为一个简洁、有吸引力的中文标题。"
+        f"英文标题：{english_title}\n请将此英文标题翻译并润色为吸引眼球的中文标题。"
         if english_title
-        else "请根据口播文案提炼一个简洁、有吸引力的中文标题。"
+        else "请根据口播文案提炼吸引眼球的中文标题。"
     )
 
     return f"""你是一位专业的短视频文案创作者。请将以下英文内容翻译成中文，并生成完整的短视频元数据。
 
 {title_instruction}
 
-要求：
-1. 口播文案采用"3秒钩子+中间内容+最后总结"的结构
-2. 语言口语化，适合短视频节奏
-3. 【重要】口播文案总字数精确控制在{min_chars}-{max_chars}字之间（目标{target_chars}字），这是硬性要求
-4. 标题要求：简洁有吸引力，不超过15个字
-5. 标签要求：8个左右，涵盖产品类别、产品名称、品牌名称、其他关键词
-6. 按照自然的语义停顿分行，每行一个小句或短语
+口播文案要求：
+1. 采用"3秒钩子+中间内容+最后总结"的结构
+2. 口语化，适合短视频节奏
+3. 【重要】总字数精确控制在{min_chars}-{max_chars}字之间（目标{target_chars}字），这是硬性要求
+4. 按照自然的语义停顿分行，每行一个小句或短语
+
+标题要求：
+- 简洁有力，不超过15个字
+
+标签要求：
+5个标签，包括：
+- 产品名称或核心品类词（如有品牌则用“品牌+品类”格式），例如“Keychron无线键盘”；
+- 1个与主题完全一致且为平台高频搜索词的核心精准标签，例如“轻薄无线键盘”；
+- 2个覆盖细分人群与使用场景的中热度长尾标签，例如“程序员键盘推荐”、“办公桌面好物”；
+- 1个和当前月份或季节（当前是{current_month}，{season}）、或者和即将到来的节日相关的时效性标签，例如“春日数码焕新”。
 
 严格按照以下格式输出，不要输出其他内容：
 ---TITLE---
