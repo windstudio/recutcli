@@ -15,7 +15,7 @@ from recut.editor import create_short, extract_audio_for_mixing, merge_video_aud
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
 from recut.transcriber import extract_audio, transcribe_audio, save_transcript
 from recut.translator import translate_and_generate_metadata, save_chinese_script
-from recut.tts import generate_audio
+from recut.tts import generate_audio, get_audio_duration
 from recut.subtitle import generate_srt, align_subtitle
 
 
@@ -94,15 +94,7 @@ def main(
                 Scene(start=i * 5.0, end=min((i + 1) * 5.0, video_duration))
                 for i in range(int(video_duration / 5.0))
             ]
-
-        click.echo(f"Found {len(fragments)} scenes. Selecting best fragments...")
-        selected = select_top_fragments(fragments, target_duration=config.max_duration) or fragments
-        total_duration = sum(f.end - f.start for f in selected)
-        click.echo(f"Selected {len(selected)} fragments ({total_duration:.1f}s total)")
-
-        # Create short video
-        click.echo(f"Creating short video for {platform}...")
-        create_short(downloaded_video, selected, output_path, config)
+        click.echo(f"Found {len(fragments)} scenes.")
 
         # Transcribe
         click.echo("Extracting audio...")
@@ -157,6 +149,19 @@ def main(
             generate_audio(chinese_script, dubbing_path, engine=tts_engine)
         except Exception as e:
             _exit_on_error("generating TTS", e)
+
+        # Get audio duration and select fragments based on it
+        dubbing_duration = get_audio_duration(dubbing_path)
+        click.echo(f"Dubbing audio duration: {dubbing_duration:.1f}s")
+
+        click.echo("Selecting best fragments based on dubbing duration...")
+        selected = select_top_fragments(fragments, target_duration=dubbing_duration) or fragments
+        total_duration = sum(f.end - f.start for f in selected)
+        click.echo(f"Selected {len(selected)} fragments ({total_duration:.1f}s total)")
+
+        # Create short video
+        click.echo(f"Creating short video for {platform}...")
+        create_short(downloaded_video, selected, output_path, config)
 
         dubbing_output_path = output_path.with_stem(output_path.stem + "_dubbing").with_suffix(".wav")
         click.echo(f"Saving dubbing audio to: {dubbing_output_path}")

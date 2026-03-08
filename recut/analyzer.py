@@ -84,7 +84,7 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
     fragments = []
     prev_time = 0.0
 
-    for i, scene_time in enumerate(scenes):
+    for scene_time in scenes:
         if scene_time > prev_time:
             fragments.append(Scene(start=prev_time, end=scene_time, score_change_count=1))
         prev_time = scene_time
@@ -131,6 +131,9 @@ def get_video_duration(video_path: Path) -> float:
 def select_top_fragments(fragments: list[Scene], target_duration: float) -> list[Scene]:
     """Select top-scoring fragments that fit within target duration.
 
+    If high-scoring fragments don't fill the target duration, continues adding
+    lower-scoring fragments until target is reached or all fragments are used.
+
     Args:
         fragments: List of scored fragments
         target_duration: Target total duration in seconds
@@ -147,6 +150,7 @@ def select_top_fragments(fragments: list[Scene], target_duration: float) -> list
     selected = []
     total_duration = 0.0
 
+    # First pass: greedily add fragments that fit
     for frag in sorted_fragments:
         frag_duration = frag.end - frag.start
         if total_duration + frag_duration <= target_duration:
@@ -155,6 +159,15 @@ def select_top_fragments(fragments: list[Scene], target_duration: float) -> list
 
         if total_duration >= target_duration:
             break
+
+    # If target duration not reached, add remaining fragments even if they exceed target
+    if total_duration < target_duration:
+        for frag in sorted_fragments:
+            if frag not in selected:
+                selected.append(frag)
+                total_duration += frag.end - frag.start
+                if total_duration >= target_duration:
+                    break
 
     # Sort by start time to maintain original order
     return sorted(selected, key=lambda f: f.start)

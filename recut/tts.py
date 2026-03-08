@@ -8,6 +8,31 @@ from pathlib import Path
 
 from recut.config import get_tts_config
 
+
+def get_audio_duration(audio_path: Path) -> float:
+    """Get audio duration in seconds from a WAV file.
+
+    Args:
+        audio_path: Path to the WAV audio file
+
+    Returns:
+        Duration in seconds
+
+    Raises:
+        RuntimeError: If the file cannot be read or is not a valid WAV file
+    """
+    audio_path = Path(audio_path)
+    if not audio_path.exists():
+        raise RuntimeError(f"Audio file not found: {audio_path}")
+
+    try:
+        with wave.open(str(audio_path), 'rb') as wav_file:
+            frames = wav_file.getnframes()
+            rate = wav_file.getframerate()
+            return frames / float(rate)
+    except Exception as e:
+        raise RuntimeError(f"Failed to read audio duration: {e}")
+
 # Default directory for Piper models
 PIPER_MODELS_DIR = Path(os.environ.get("PIPER_MODELS_DIR", "C:/piper_models"))
 

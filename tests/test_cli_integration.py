@@ -28,6 +28,9 @@ def test_cli_integration_dubbing_workflow():
             Path(path).write_bytes(b"fake audio")
             return path
 
+        def mock_get_audio_duration(path):
+            return 30.0  # Return 30 seconds for testing
+
         def mock_create_short(video, fragments, output, config):
             Path(output).write_bytes(b"fake video")
             return output
@@ -75,6 +78,7 @@ def test_cli_integration_dubbing_workflow():
              patch("recut.cli.translate_and_generate_metadata", return_value=mock_metadata), \
              patch("recut.cli.save_chinese_script", side_effect=mock_save_chinese_script), \
              patch("recut.cli.generate_audio", side_effect=mock_generate_audio), \
+             patch("recut.cli.get_audio_duration", side_effect=mock_get_audio_duration), \
              patch("recut.cli.generate_srt", side_effect=mock_srt), \
              patch("recut.cli.align_subtitle", side_effect=mock_align), \
              patch("recut.cli.extract_audio_for_mixing", side_effect=mock_extract_mixing), \
