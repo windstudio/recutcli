@@ -47,11 +47,11 @@ def test_cli_integration_dubbing_workflow():
             Path(output).write_text("1\n00:00:00,000 --> 00:00:01,000\ntest")
             return output
 
-        def mock_align(srt, text, output):
+        def mock_align(srt, text, output, time_offset=0.0):
             Path(output).write_text("1\n00:00:00,000 --> 00:00:01,000\ntest")
             return output
 
-        def mock_merge(video, orig, dub, srt, output, thumbnail_path=None, thumbnail_duration=2.0):
+        def mock_merge(video, orig, dub, srt, output, thumbnail_path=None, logo_path=None):
             Path(output).write_bytes(b"fake video")
             return output
 
@@ -89,7 +89,8 @@ def test_cli_integration_dubbing_workflow():
              patch("recut.cli.extract_audio_for_mixing", side_effect=mock_extract_mixing), \
              patch("recut.cli.merge_video_audio_subtitle", side_effect=mock_merge), \
              patch("recut.cli.generate_thumbnail", side_effect=mock_generate_thumbnail), \
-             patch("recut.cli.get_api_config", return_value=MagicMock(llm_api_key="test-key", llm_api_url="http://test", llm_model="test-model")):
+             patch("recut.cli.get_api_config", return_value=MagicMock(llm_api_key="test-key", llm_api_url="http://test", llm_model="test-model")), \
+             patch("recut.cli.get_thumbnail_config", return_value=MagicMock(logo_path=None)):
 
             output_path = tmpdir / "output.mp4"
             result = runner.invoke(main, ["https://test.com", "-o", str(output_path)])

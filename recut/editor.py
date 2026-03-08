@@ -11,7 +11,10 @@ from recut.downloader import get_ffmpeg_path
 
 def _run_ffmpeg(cmd: list[str]) -> None:
     """Run FFmpeg command, raising on error."""
-    subprocess.run(cmd, capture_output=True, check=True)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        error_msg = result.stderr or result.stdout or "Unknown error"
+        raise RuntimeError(f"FFmpeg failed (code {result.returncode}): {error_msg}")
 
 
 def format_timestamp(seconds: float) -> str:
@@ -109,9 +112,9 @@ def merge_video_audio_subtitle(
     dubbing_volume: float = 1.0,
     original_volume: float = 0.3,
     thumbnail_path: Path | None = None,
-    thumbnail_duration: float = 2.0
+    logo_path: Path | None = None
 ) -> Path:
-    """Merge video with audio tracks, subtitle, and optional thumbnail as first frame.
+    """Merge video with audio tracks, subtitle, and optional thumbnail/logo overlay.
 
     Args:
         video_path: Path to the base video
@@ -121,14 +124,11 @@ def merge_video_audio_subtitle(
         output_path: Path for output video
         dubbing_volume: Volume for dubbing audio (default 1.0)
         original_volume: Volume for original background audio (default 0.3)
-        thumbnail_path: Optional path to thumbnail image to prepend as first frame
-        thumbnail_duration: Duration in seconds for thumbnail display (default 2.0)
+        thumbnail_path: Optional path to thumbnail image to prepend as first frame (0.5s)
+        logo_path: Optional path to logo image to overlay throughout video
 
     Returns:
         Path to the output video
-
-    Uses -shortest to ensure output duration matches video length,
-    trimming any excess audio if dubbing is longer than video.
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,56 +138,47 @@ def merge_video_audio_subtitle(
     if len(subtitle_path_str) > 1 and subtitle_path_str[1] == ":":
         subtitle_path_str = subtitle_path_str[0] + "\\:" + subtitle_path_str[2:]
 
-    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
+    # Check if logo exists
+    has_logo = logo_path and Path(logo_path).exists()
+    has_thumbnail = thumbnail_path and Path(thumbnail_path).exists()
 
-    if thumbnail_path and Path(thumbnail_path).exists():
-        # Prepend thumbnail as first frame with extended duration
-        # Scale thumbnail to match video, then concatenate with video
+    thumbnail_duration = 0.5  # Fixed 0.5 seconds
+
+    if has_thumbnail:
+        # Use temporary directory for thumbnail processing
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
+            base_video = _process_with_thumbnail(
+                video_path, thumbnail_path, tmpdir, thumbnail_duration,
+                dubbing_audio_path, original_audio_path, subtitle_path_str,
+                output_path, dubbing_volume, original_volume, has_logo, logo_path
+            )
+    else:
+        # No thumbnail, process directly
+        subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
+        audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=longest[aout]"
 
-            # Create a short video from the thumbnail with silent audio
-            # Use same audio params as main video (48000Hz, stereo)
-            thumbnail_video = tmpdir / "thumbnail_video.mp4"
+        if has_logo:
+            # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
+            video_filter = f"[0:v][3:v]overlay=40:40[vl];[vl]{subtitle_filter}[vout]"
             _run_ffmpeg([
                 get_ffmpeg_path(),
-                "-loop", "1",
-                "-i", str(thumbnail_path),
-                "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",  # Match main video audio
-                "-t", str(thumbnail_duration),
+                "-i", str(video_path),
+                "-i", str(dubbing_audio_path),
+                "-i", str(original_audio_path),
+                "-i", str(logo_path),
+                "-filter_complex", f"{audio_filter};{video_filter}",
+                "-map", "[vout]",
+                "-map", "[aout]",
                 "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-                "-pix_fmt", "yuv420p",
                 "-c:a", "aac", "-b:a", "128k",
-                "-shortest",
-                "-y", str(thumbnail_video)
+                "-movflags", "+faststart",
+                "-y", str(output_path)
             ])
-
-            # Concatenate thumbnail video with main video (re-encode for compatibility)
-            concat_video = tmpdir / "concat_video.mp4"
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-                # Use absolute paths for concat list
-                f.write(f"file '{thumbnail_video.resolve()}'\n")
-                f.write(f"file '{video_path.resolve()}'\n")
-                list_file = f.name
-
-            try:
-                _run_ffmpeg([
-                    get_ffmpeg_path(), "-f", "concat", "-safe", "0",
-                    "-i", list_file,
-                    "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-                    "-c:a", "aac", "-b:a", "128k",
-                    "-y", str(concat_video)
-                ])
-            finally:
-                Path(list_file).unlink()
-
-            # Now merge with audio and subtitles
-            # Use longest input for audio mixing (dubbing audio)
-            audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=longest[aout]"
-
+        else:
             _run_ffmpeg([
                 get_ffmpeg_path(),
-                "-i", str(concat_video),
+                "-i", str(video_path),
                 "-i", str(dubbing_audio_path),
                 "-i", str(original_audio_path),
                 "-filter_complex", audio_filter,
@@ -198,13 +189,85 @@ def merge_video_audio_subtitle(
                 "-movflags", "+faststart",
                 "-y", str(output_path)
             ])
-    else:
-        # Standard merge without thumbnail
-        audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2[aout]"
 
+    return output_path
+
+
+def _process_with_thumbnail(
+    video_path: Path,
+    thumbnail_path: Path,
+    tmpdir: Path,
+    thumbnail_duration: float,
+    dubbing_audio_path: Path,
+    original_audio_path: Path,
+    subtitle_path_str: str,
+    output_path: Path,
+    dubbing_volume: float,
+    original_volume: float,
+    has_logo: bool,
+    logo_path: Path | None
+) -> Path:
+    """Process video with thumbnail prepended."""
+    # Prepend thumbnail as first frame (0.5s)
+    thumbnail_video = tmpdir / "thumbnail_video.mp4"
+    _run_ffmpeg([
+        get_ffmpeg_path(),
+        "-loop", "1",
+        "-i", str(thumbnail_path),
+        "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+        "-t", str(thumbnail_duration),
+        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "128k",
+        "-shortest",
+        "-y", str(thumbnail_video)
+    ])
+
+    # Concatenate thumbnail with main video
+    concat_video = tmpdir / "concat_video.mp4"
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(f"file '{thumbnail_video.resolve()}'\n")
+        f.write(f"file '{video_path.resolve()}'\n")
+        list_file = f.name
+
+    try:
+        _run_ffmpeg([
+            get_ffmpeg_path(), "-f", "concat", "-safe", "0",
+            "-i", list_file,
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-y", str(concat_video)
+        ])
+    finally:
+        Path(list_file).unlink()
+
+    # Apply subtitles (timestamps already include offset if thumbnail was generated)
+    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
+
+    # Build FFmpeg command based on logo presence
+    audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=longest[aout]"
+
+    if has_logo:
+        # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
+        video_filter = f"[0:v][3:v]overlay=40:40[vl];[vl]{subtitle_filter}[vout]"
         _run_ffmpeg([
             get_ffmpeg_path(),
-            "-i", str(video_path),
+            "-i", str(concat_video),
+            "-i", str(dubbing_audio_path),
+            "-i", str(original_audio_path),
+            "-i", str(logo_path),
+            "-filter_complex", f"{audio_filter};{video_filter}",
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-y", str(output_path)
+        ])
+    else:
+        _run_ffmpeg([
+            get_ffmpeg_path(),
+            "-i", str(concat_video),
             "-i", str(dubbing_audio_path),
             "-i", str(original_audio_path),
             "-filter_complex", audio_filter,
@@ -213,7 +276,6 @@ def merge_video_audio_subtitle(
             "-c:v", "libx264", "-preset", "medium", "-crf", "23",
             "-c:a", "aac", "-b:a", "128k",
             "-movflags", "+faststart",
-            "-shortest",
             "-y", str(output_path)
         ])
 

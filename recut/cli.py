@@ -9,7 +9,7 @@ import click
 
 from recut import __version__
 from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration
-from recut.config import get_platform_config, PLATFORMS, load_dotenv_config, get_api_config, get_tts_config
+from recut.config import get_platform_config, PLATFORMS, load_dotenv_config, get_api_config, get_tts_config, get_thumbnail_config
 from recut.downloader import check_ffmpeg, download_and_merge_m3u8, FFMPEG_INSTALL_MSG
 from recut.editor import create_short, extract_audio_for_mixing, merge_video_audio_subtitle
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
@@ -176,13 +176,6 @@ def main(
         except Exception as e:
             _exit_on_error("generating subtitles", e)
 
-        click.echo("Aligning subtitles...")
-        aligned_srt_path = tmpdir / "aligned.srt"
-        try:
-            align_subtitle(srt_path, chinese_script, aligned_srt_path)
-        except Exception as e:
-            _exit_on_error("aligning subtitles", e)
-
         # Generate thumbnail from original video's first frame
         click.echo("Generating thumbnail...")
         thumbnail_path = tmpdir / "thumbnail.jpg"
@@ -197,6 +190,15 @@ def main(
             click.echo(f"Warning: Failed to generate thumbnail: {e}")
             thumbnail_path = None
 
+        # Align subtitles with offset if thumbnail was generated
+        click.echo("Aligning subtitles...")
+        aligned_srt_path = tmpdir / "aligned.srt"
+        subtitle_offset = 0.5 if thumbnail_path and thumbnail_path.exists() else 0.0
+        try:
+            align_subtitle(srt_path, chinese_script, aligned_srt_path, time_offset=subtitle_offset)
+        except Exception as e:
+            _exit_on_error("aligning subtitles", e)
+
         # Merge final video
         click.echo("Extracting original audio for mixing...")
         original_audio_path = tmpdir / "original.wav"
@@ -207,10 +209,16 @@ def main(
 
         click.echo("Merging video with dubbing and subtitles...")
         final_output_path = output_path.with_stem(output_path.stem + "_final")
+
+        # Get logo path from config
+        thumbnail_config = get_thumbnail_config()
+        logo_path = Path(thumbnail_config.logo_path) if thumbnail_config.logo_path else None
+
         try:
             merge_video_audio_subtitle(
                 output_path, original_audio_path, dubbing_path, aligned_srt_path, final_output_path,
-                thumbnail_path=thumbnail_path
+                thumbnail_path=thumbnail_path,
+                logo_path=logo_path
             )
         except Exception as e:
             _exit_on_error("merging video", e)

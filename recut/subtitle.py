@@ -94,7 +94,8 @@ def _split_by_punctuation(text: str) -> list[str]:
 def align_subtitle(
     srt_path: Path,
     expected_text: str,
-    output_path: Path
+    output_path: Path,
+    time_offset: float = 0.0
 ) -> Path:
     """Align subtitle text with expected text, creating segments per line.
 
@@ -110,6 +111,7 @@ def align_subtitle(
         srt_path: Path to input SRT file (used for total duration)
         expected_text: Expected correct text (multi-line, each line = one segment)
         output_path: Path to output SRT file
+        time_offset: Time offset in seconds to add to all timestamps (default 0.0)
 
     Returns:
         Path to aligned SRT file
@@ -151,7 +153,7 @@ def align_subtitle(
 
     # Generate new subtitle blocks
     new_blocks = []
-    current_time = 0.0
+    current_time = time_offset  # Start with offset
 
     for i, line in enumerate(text_lines):
         # Calculate duration based on character count

@@ -309,32 +309,6 @@ def generate_thumbnail(
                 )
                 text_y += line_height
 
-            # Draw logo if configured
-            logo_path = config.logo_path
-            if logo_path and Path(logo_path).exists():
-                try:
-                    with Image.open(logo_path) as logo:
-                        if logo.mode != "RGBA":
-                            logo = logo.convert("RGBA")
-
-                        # Scale logo to reasonable size (max 20% of width)
-                        max_logo_width = int(target_width * 0.2)
-                        if logo.width > max_logo_width:
-                            scale = max_logo_width / logo.width
-                            logo = logo.resize(
-                                (int(logo.width * scale), int(logo.height * scale)),
-                                Image.Resampling.LANCZOS
-                            )
-
-                        # Position logo at top-left with margin
-                        logo_margin = 30
-                        logo_x = logo_margin + 10  # Slight offset from edge
-                        logo_y = logo_margin + 10
-
-                        img.paste(logo, (logo_x, logo_y), logo)
-                except Exception:
-                    pass  # Ignore logo errors silently
-
             # Convert to RGB and save
             img_rgb = Image.new("RGB", img.size, (0, 0, 0))
             img_rgb.paste(img, mask=img.split()[3])
