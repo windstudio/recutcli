@@ -327,9 +327,9 @@ def generate_thumbnail(
                             )
 
                         # Position logo at top-left with margin
-                        logo_margin = 20
-                        logo_x = logo_margin
-                        logo_y = logo_margin
+                        logo_margin = 30
+                        logo_x = logo_margin + 10  # Slight offset from edge
+                        logo_y = logo_margin + 10
 
                         img.paste(logo, (logo_x, logo_y), logo)
                 except Exception:
