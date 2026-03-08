@@ -53,13 +53,13 @@ def test_invalid_platform_raises():
 
 
 def test_tts_config_defaults():
-    """Test TTSConfig has correct defaults."""
+    """Test TTSConfig dataclass defaults (empty strings)."""
     config = TTSConfig()
-    assert config.engine == "edge"
-    assert config.voice == "zh-CN-XiaoxiaoNeural"
-    assert config.coqui_voice == "tts_models/zh-CN/baker/tacotron2-DDC"
-    assert config.piper_voice == "zh_CN-huayan-medium"
-    assert config.whisper_model == "small"
+    assert config.engine == ""
+    assert config.voice == ""
+    assert config.coqui_voice == ""
+    assert config.piper_voice == ""
+    assert config.whisper_model == ""
 
 
 def test_tts_config_from_env(monkeypatch):
