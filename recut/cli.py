@@ -17,6 +17,7 @@ from recut.transcriber import extract_audio, transcribe_audio, save_transcript
 from recut.translator import translate_and_generate_metadata, save_chinese_script
 from recut.tts import generate_audio, get_audio_duration
 from recut.subtitle import generate_srt, align_subtitle
+from recut.thumbnail import generate_thumbnail
 
 
 def _exit_on_error(message: str, error: Exception | None = None) -> None:
@@ -200,6 +201,21 @@ def main(
         # Save output files
         shutil.copy2(aligned_srt_path, output_path.with_suffix(".srt"))
         shutil.copy2(downloaded_video, output_path.with_stem(output_path.stem + "_raw"))
+
+        # Generate thumbnail
+        click.echo("Generating thumbnail...")
+        thumbnail_path = output_path.with_stem(output_path.stem + "_thumb").with_suffix(".jpg")
+        try:
+            generate_thumbnail(
+                video_path=downloaded_video,
+                title=metadata["title"],
+                output_path=thumbnail_path,
+                platform=platform,
+                brand=title
+            )
+            click.echo(f"Thumbnail saved to: {thumbnail_path}")
+        except RuntimeError as e:
+            click.echo(f"Warning: Failed to generate thumbnail: {e}")
 
     click.echo(f"Done! Output saved to: {final_output_path}")
 

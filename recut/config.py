@@ -89,3 +89,77 @@ def get_tts_config() -> TTSConfig:
         piper_voice=os.environ.get("PIPER_VOICE", "zh_CN-huayan-medium"),
         whisper_model=os.environ.get("WHISPER_MODEL", "small"),
     )
+
+
+@dataclass
+class ThumbnailConfig:
+    """Thumbnail generation configuration."""
+    font_path: str = ""  # Path to Chinese font file
+    font_size_title: int = 72  # Font size for title
+    font_size_subtitle: int = 36  # Font size for subtitle/brand
+
+
+# Default Chinese fonts (in order of preference)
+DEFAULT_CHINESE_FONTS = [
+    "ZCOOLKuaiLe-Regular.ttf",  # 站酷快乐体
+    "ZCOOLXiaoWei-Regular.ttf",  # 站酷小薇体
+    "MaShanZheng-Regular.ttf",  # 马善政书法
+    "NotoSansSC-Bold.ttf",  # 思源黑体
+    "SourceHanSansSC-Bold.ttf",  # 思源黑体（另一名称）
+]
+
+# Common font directories on Windows
+WINDOWS_FONT_DIRS = [
+    Path("C:/Windows/Fonts"),
+    Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/Windows/Fonts",
+    Path(os.environ.get("USERPROFILE", "")) / ".local/share/fonts",
+]
+
+
+def find_chinese_font() -> Path | None:
+    """Find an available Chinese font on the system.
+
+    Returns:
+        Path to font file, or None if not found
+    """
+    # Check environment variable first
+    env_font = os.environ.get("THUMBNAIL_FONT", "")
+    if env_font and Path(env_font).exists():
+        return Path(env_font)
+
+    # Search in common font directories
+    for font_dir in WINDOWS_FONT_DIRS:
+        if not font_dir.exists():
+            continue
+        for font_name in DEFAULT_CHINESE_FONTS:
+            font_path = font_dir / font_name
+            if font_path.exists():
+                return font_path
+
+    # Try to find any Chinese-capable font
+    for font_dir in WINDOWS_FONT_DIRS:
+        if not font_dir.exists():
+            continue
+        for font_file in font_dir.glob("*.ttf"):
+            name_lower = font_file.name.lower()
+            if any(kw in name_lower for kw in ["simhei", "simsun", "yahei", "noto", "source", "hei", "song"]):
+                return font_file
+
+    return None
+
+
+def get_thumbnail_config() -> ThumbnailConfig:
+    """Get thumbnail configuration from environment."""
+    font_path = os.environ.get("THUMBNAIL_FONT", "")
+
+    # Try to find a font if not specified
+    if not font_path:
+        found_font = find_chinese_font()
+        if found_font:
+            font_path = str(found_font)
+
+    return ThumbnailConfig(
+        font_path=font_path,
+        font_size_title=int(os.environ.get("THUMBNAIL_FONT_SIZE_TITLE", "72")),
+        font_size_subtitle=int(os.environ.get("THUMBNAIL_FONT_SIZE_SUBTITLE", "36")),
+    )

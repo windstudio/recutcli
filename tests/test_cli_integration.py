@@ -59,6 +59,11 @@ def test_cli_integration_dubbing_workflow():
             Path(path).write_text("# Title\nTest\n\n# Transcript\nTest transcript\n\n# Tags\n#tag1 #tag2\n")
             return path
 
+        def mock_generate_thumbnail(video_path, title, output_path, platform="tiktok", font_path=None, brand=None):
+            # Create a fake thumbnail file
+            Path(output_path).write_bytes(b"fake thumbnail")
+            return output_path
+
         # Mock metadata response
         mock_metadata = {
             "title": "测试标题",
@@ -83,6 +88,7 @@ def test_cli_integration_dubbing_workflow():
              patch("recut.cli.align_subtitle", side_effect=mock_align), \
              patch("recut.cli.extract_audio_for_mixing", side_effect=mock_extract_mixing), \
              patch("recut.cli.merge_video_audio_subtitle", side_effect=mock_merge), \
+             patch("recut.cli.generate_thumbnail", side_effect=mock_generate_thumbnail), \
              patch("recut.cli.get_api_config", return_value=MagicMock(llm_api_key="test-key", llm_api_url="http://test", llm_model="test-model")):
 
             output_path = tmpdir / "output.mp4"
