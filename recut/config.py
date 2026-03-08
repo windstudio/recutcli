@@ -114,7 +114,7 @@ def find_chinese_font() -> Path | None:
     # Default Chinese fonts (in order of preference)
     default_fonts = os.environ.get(
         "THUMBNAIL_DEFAULT_FONTS",
-        "ZCOOLXiaoWei-Regular.ttf,NotoSansSC-Bold.ttf,SourceHanSansSC-Bold.ttf"
+        "ZCOOLGaoDuanHei-Regular.ttf,NotoSansSC-Bold.ttf,SourceHanSansSC-Bold.ttf"
     ).split(",")
 
     # Common font directories on Windows
