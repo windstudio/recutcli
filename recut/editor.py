@@ -107,9 +107,25 @@ def merge_video_audio_subtitle(
     subtitle_path: Path,
     output_path: Path,
     dubbing_volume: float = 1.0,
-    original_volume: float = 0.3
+    original_volume: float = 0.3,
+    thumbnail_path: Path | None = None,
+    thumbnail_duration: float = 2.0
 ) -> Path:
-    """Merge video with audio tracks and subtitle.
+    """Merge video with audio tracks, subtitle, and optional thumbnail as first frame.
+
+    Args:
+        video_path: Path to the base video
+        original_audio_path: Path to original audio extracted from video
+        dubbing_audio_path: Path to dubbing audio
+        subtitle_path: Path to SRT subtitle file
+        output_path: Path for output video
+        dubbing_volume: Volume for dubbing audio (default 1.0)
+        original_volume: Volume for original background audio (default 0.3)
+        thumbnail_path: Optional path to thumbnail image to prepend as first frame
+        thumbnail_duration: Duration in seconds for thumbnail display (default 2.0)
+
+    Returns:
+        Path to the output video
 
     Uses -shortest to ensure output duration matches video length,
     trimming any excess audio if dubbing is longer than video.
@@ -123,21 +139,76 @@ def merge_video_audio_subtitle(
         subtitle_path_str = subtitle_path_str[0] + "\\:" + subtitle_path_str[2:]
 
     subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
-    audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2[aout]"
 
-    _run_ffmpeg([
-        get_ffmpeg_path(),
-        "-i", str(video_path),
-        "-i", str(dubbing_audio_path),
-        "-i", str(original_audio_path),
-        "-filter_complex", audio_filter,
-        "-vf", subtitle_filter,
-        "-map", "0:v", "-map", "[aout]",
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart",
-        "-shortest",  # Output duration matches shortest input (video)
-        "-y", str(output_path)
-    ])
+    if thumbnail_path and Path(thumbnail_path).exists():
+        # Prepend thumbnail as first frame with extended duration
+        # Scale thumbnail to match video, then concatenate with video
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            # Create a short video from the thumbnail
+            thumbnail_video = tmpdir / "thumbnail_video.mp4"
+            _run_ffmpeg([
+                get_ffmpeg_path(),
+                "-loop", "1",
+                "-i", str(thumbnail_path),
+                "-t", str(thumbnail_duration),
+                "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+                "-pix_fmt", "yuv420p",
+                "-an",  # No audio for thumbnail video
+                "-y", str(thumbnail_video)
+            ])
+
+            # Concatenate thumbnail video with main video
+            concat_video = tmpdir / "concat_video.mp4"
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+                f.write(f"file '{thumbnail_video}'\n")
+                f.write(f"file '{video_path}'\n")
+                list_file = f.name
+
+            try:
+                _run_ffmpeg([
+                    get_ffmpeg_path(), "-f", "concat", "-safe", "0",
+                    "-i", list_file, "-c", "copy", "-y", str(concat_video)
+                ])
+            finally:
+                Path(list_file).unlink()
+
+            # Now merge with audio and subtitles
+            # Adjust subtitle timing to account for thumbnail duration
+            audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2[aout]"
+
+            _run_ffmpeg([
+                get_ffmpeg_path(),
+                "-i", str(concat_video),
+                "-i", str(dubbing_audio_path),
+                "-i", str(original_audio_path),
+                "-filter_complex", audio_filter,
+                "-vf", subtitle_filter,
+                "-map", "0:v", "-map", "[aout]",
+                "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+                "-c:a", "aac", "-b:a", "128k",
+                "-movflags", "+faststart",
+                "-shortest",
+                "-y", str(output_path)
+            ])
+    else:
+        # Standard merge without thumbnail
+        audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2[aout]"
+
+        _run_ffmpeg([
+            get_ffmpeg_path(),
+            "-i", str(video_path),
+            "-i", str(dubbing_audio_path),
+            "-i", str(original_audio_path),
+            "-filter_complex", audio_filter,
+            "-vf", subtitle_filter,
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-shortest",
+            "-y", str(output_path)
+        ])
 
     return output_path

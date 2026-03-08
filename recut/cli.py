@@ -183,6 +183,21 @@ def main(
         except Exception as e:
             _exit_on_error("aligning subtitles", e)
 
+        # Generate thumbnail from original video's first frame
+        click.echo("Generating thumbnail...")
+        thumbnail_path = tmpdir / "thumbnail.jpg"
+        try:
+            generate_thumbnail(
+                video_path=downloaded_video,
+                title=metadata["title"],
+                output_path=thumbnail_path,
+                platform=platform,
+                brand=title
+            )
+        except RuntimeError as e:
+            click.echo(f"Warning: Failed to generate thumbnail: {e}")
+            thumbnail_path = None
+
         # Merge final video
         click.echo("Extracting original audio for mixing...")
         original_audio_path = tmpdir / "original.wav"
@@ -194,7 +209,10 @@ def main(
         click.echo("Merging video with dubbing and subtitles...")
         final_output_path = output_path.with_stem(output_path.stem + "_final")
         try:
-            merge_video_audio_subtitle(output_path, original_audio_path, dubbing_path, aligned_srt_path, final_output_path)
+            merge_video_audio_subtitle(
+                output_path, original_audio_path, dubbing_path, aligned_srt_path, final_output_path,
+                thumbnail_path=thumbnail_path
+            )
         except Exception as e:
             _exit_on_error("merging video", e)
 
@@ -202,20 +220,11 @@ def main(
         shutil.copy2(aligned_srt_path, output_path.with_suffix(".srt"))
         shutil.copy2(downloaded_video, output_path.with_stem(output_path.stem + "_raw"))
 
-        # Generate thumbnail
-        click.echo("Generating thumbnail...")
-        thumbnail_path = output_path.with_stem(output_path.stem + "_thumb").with_suffix(".jpg")
-        try:
-            generate_thumbnail(
-                video_path=downloaded_video,
-                title=metadata["title"],
-                output_path=thumbnail_path,
-                platform=platform,
-                brand=title
-            )
-            click.echo(f"Thumbnail saved to: {thumbnail_path}")
-        except RuntimeError as e:
-            click.echo(f"Warning: Failed to generate thumbnail: {e}")
+        # Save thumbnail to output directory
+        if thumbnail_path and thumbnail_path.exists():
+            thumbnail_output_path = output_path.with_stem(output_path.stem + "_thumb").with_suffix(".jpg")
+            shutil.copy2(thumbnail_path, thumbnail_output_path)
+            click.echo(f"Thumbnail saved to: {thumbnail_output_path}")
 
     click.echo(f"Done! Output saved to: {final_output_path}")
 

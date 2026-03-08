@@ -51,7 +51,7 @@ def test_cli_integration_dubbing_workflow():
             Path(output).write_text("1\n00:00:00,000 --> 00:00:01,000\ntest")
             return output
 
-        def mock_merge(video, orig, dub, srt, output):
+        def mock_merge(video, orig, dub, srt, output, thumbnail_path=None, thumbnail_duration=2.0):
             Path(output).write_bytes(b"fake video")
             return output
 

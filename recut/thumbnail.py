@@ -182,6 +182,9 @@ def generate_thumbnail(
 ) -> Path:
     """Generate a thumbnail image for a video.
 
+    The thumbnail is in vertical format (9:16 aspect ratio) for social media platforms.
+    For horizontal video frames, applies blur background to fill the vertical canvas.
+
     Args:
         video_path: Path to video file
         title: Chinese title for the thumbnail
@@ -228,29 +231,41 @@ def generate_thumbnail(
             if img.mode != "RGBA":
                 img = img.convert("RGBA")
 
-            # Resize to platform dimensions (cover fit)
+            # Target dimensions (full vertical video size)
             target_width = platform_config.width
-            target_height = int(platform_config.height * 0.6)  # Use 60% height for thumbnail
+            target_height = platform_config.height
 
-            # Calculate crop dimensions (center crop)
             img_ratio = img.width / img.height
             target_ratio = target_width / target_height
 
             if img_ratio > target_ratio:
-                # Image is wider, crop sides
-                new_height = img.height
-                new_width = int(new_height * target_ratio)
-                left = (img.width - new_width) // 2
-                top = 0
+                # Image is wider than target (horizontal video)
+                # Scale image to fit height, then add blurred background for sides
+                img_resized = img.resize(
+                    (int(target_height * img_ratio), target_height),
+                    Image.Resampling.LANCZOS
+                )
+
+                # Create blurred background from a cropped portion
+                background = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+                background = background.filter(ImageFilter.GaussianBlur(radius=30))
+
+                # Paste resized image in center
+                paste_x = (target_width - img_resized.width) // 2
+                background.paste(img_resized, (paste_x, 0), img_resized if img_resized.mode == "RGBA" else None)
+                img = background
             else:
-                # Image is taller, crop top/bottom
+                # Image is taller than target (vertical video)
+                # Center crop to fit
                 new_width = img.width
                 new_height = int(new_width / target_ratio)
-                left = 0
+                if new_height > img.height:
+                    new_height = img.height
+                    new_width = int(new_height * target_ratio)
+                left = (img.width - new_width) // 2
                 top = (img.height - new_height) // 2
-
-            img = img.crop((left, top, left + new_width, top + new_height))
-            img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
+                img = img.crop((left, top, left + new_width, top + new_height))
+                img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
 
             # Add gradient overlay at bottom
             gradient = create_gradient_mask((target_width, target_height), direction="bottom")
