@@ -97,23 +97,7 @@ class ThumbnailConfig:
     font_path: str = ""  # Path to Chinese font file
     font_size_title: int = 72  # Font size for title
     font_size_subtitle: int = 36  # Font size for subtitle/brand
-
-
-# Default Chinese fonts (in order of preference)
-DEFAULT_CHINESE_FONTS = [
-    "ZCOOLKuaiLe-Regular.ttf",  # 站酷快乐体
-    "ZCOOLXiaoWei-Regular.ttf",  # 站酷小薇体
-    "MaShanZheng-Regular.ttf",  # 马善政书法
-    "NotoSansSC-Bold.ttf",  # 思源黑体
-    "SourceHanSansSC-Bold.ttf",  # 思源黑体（另一名称）
-]
-
-# Common font directories on Windows
-WINDOWS_FONT_DIRS = [
-    Path("C:/Windows/Fonts"),
-    Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/Windows/Fonts",
-    Path(os.environ.get("USERPROFILE", "")) / ".local/share/fonts",
-]
+    logo_path: str = ""  # Path to logo image file
 
 
 def find_chinese_font() -> Path | None:
@@ -127,17 +111,30 @@ def find_chinese_font() -> Path | None:
     if env_font and Path(env_font).exists():
         return Path(env_font)
 
+    # Default Chinese fonts (in order of preference)
+    default_fonts = os.environ.get(
+        "THUMBNAIL_DEFAULT_FONTS",
+        "ZCOOLXiaoWei-Regular.ttf,NotoSansSC-Bold.ttf,SourceHanSansSC-Bold.ttf"
+    ).split(",")
+
+    # Common font directories on Windows
+    font_dirs = [
+        Path("C:/Windows/Fonts"),
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/Windows/Fonts",
+        Path(os.environ.get("USERPROFILE", "")) / ".local/share/fonts",
+    ]
+
     # Search in common font directories
-    for font_dir in WINDOWS_FONT_DIRS:
+    for font_dir in font_dirs:
         if not font_dir.exists():
             continue
-        for font_name in DEFAULT_CHINESE_FONTS:
-            font_path = font_dir / font_name
+        for font_name in default_fonts:
+            font_path = font_dir / font_name.strip()
             if font_path.exists():
                 return font_path
 
     # Try to find any Chinese-capable font
-    for font_dir in WINDOWS_FONT_DIRS:
+    for font_dir in font_dirs:
         if not font_dir.exists():
             continue
         for font_file in font_dir.glob("*.ttf"):
@@ -162,4 +159,5 @@ def get_thumbnail_config() -> ThumbnailConfig:
         font_path=font_path,
         font_size_title=int(os.environ.get("THUMBNAIL_FONT_SIZE_TITLE", "72")),
         font_size_subtitle=int(os.environ.get("THUMBNAIL_FONT_SIZE_SUBTITLE", "36")),
+        logo_path=os.environ.get("THUMBNAIL_LOGO_PATH", "images/logo.png"),
     )

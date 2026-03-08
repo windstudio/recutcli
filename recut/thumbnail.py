@@ -177,8 +177,7 @@ def generate_thumbnail(
     title: str,
     output_path: Path,
     platform: str = "tiktok",
-    font_path: str | Path | None = None,
-    brand: str | None = None
+    font_path: str | Path | None = None
 ) -> Path:
     """Generate a thumbnail image for a video.
 
@@ -191,7 +190,6 @@ def generate_thumbnail(
         output_path: Path to save the thumbnail
         platform: Platform name for sizing (tiktok, instagram, reels)
         font_path: Path to Chinese font file (optional, auto-detected if not provided)
-        brand: Optional brand name to display
 
     Returns:
         Path to the generated thumbnail
@@ -214,7 +212,7 @@ def generate_thumbnail(
     else:
         raise RuntimeError(
             "No Chinese font found. Please install a Chinese font or set THUMBNAIL_FONT environment variable. "
-            "Recommended: Download 站酷高端黑 from https://www.zcool.com.cn/special/zcoolfonts/"
+            "Recommended: Download 站酷小薇体 from https://www.zcool.com.cn/special/zcoolfonts/"
         )
 
     # Extract first frame
@@ -274,7 +272,6 @@ def generate_thumbnail(
             # Load fonts
             try:
                 font_title = ImageFont.truetype(str(font_path), config.font_size_title)
-                font_brand = ImageFont.truetype(str(font_path), config.font_size_subtitle)
             except OSError as e:
                 raise RuntimeError(f"Failed to load font {font_path}: {e}")
 
@@ -290,8 +287,9 @@ def generate_thumbnail(
             line_height = config.font_size_title + 10
             total_height = len(lines) * line_height
 
-            # Position text at bottom with margin
-            text_y = target_height - total_height - margin
+            # Position text at bottom but higher up to avoid UI overlays
+            # Leave more space from bottom (20% of height instead of just margin)
+            text_y = target_height - total_height - int(target_height * 0.2)
 
             for line in lines:
                 # Center the text
@@ -311,21 +309,31 @@ def generate_thumbnail(
                 )
                 text_y += line_height
 
-            # Draw brand if provided
-            if brand:
-                brand_y = margin // 2
-                bbox = font_brand.getbbox(brand)
-                brand_width = bbox[2] - bbox[0]
-                brand_x = (target_width - brand_width) // 2
-                draw_text_with_stroke(
-                    draw,
-                    (brand_x, brand_y),
-                    brand,
-                    font_brand,
-                    fill=(255, 255, 255, 230),
-                    stroke_color=(0, 0, 0, 180),
-                    stroke_width=2
-                )
+            # Draw logo if configured
+            logo_path = config.logo_path
+            if logo_path and Path(logo_path).exists():
+                try:
+                    with Image.open(logo_path) as logo:
+                        if logo.mode != "RGBA":
+                            logo = logo.convert("RGBA")
+
+                        # Scale logo to reasonable size (max 20% of width)
+                        max_logo_width = int(target_width * 0.2)
+                        if logo.width > max_logo_width:
+                            scale = max_logo_width / logo.width
+                            logo = logo.resize(
+                                (int(logo.width * scale), int(logo.height * scale)),
+                                Image.Resampling.LANCZOS
+                            )
+
+                        # Position logo at top-left with margin
+                        logo_margin = 20
+                        logo_x = logo_margin
+                        logo_y = logo_margin
+
+                        img.paste(logo, (logo_x, logo_y), logo)
+                except Exception:
+                    pass  # Ignore logo errors silently
 
             # Convert to RGB and save
             img_rgb = Image.new("RGB", img.size, (0, 0, 0))

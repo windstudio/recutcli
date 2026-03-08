@@ -59,7 +59,7 @@ def test_cli_integration_dubbing_workflow():
             Path(path).write_text("# Title\nTest\n\n# Transcript\nTest transcript\n\n# Tags\n#tag1 #tag2\n")
             return path
 
-        def mock_generate_thumbnail(video_path, title, output_path, platform="tiktok", font_path=None, brand=None):
+        def mock_generate_thumbnail(video_path, title, output_path, platform="tiktok", font_path=None):
             # Create a fake thumbnail file
             Path(output_path).write_bytes(b"fake thumbnail")
             return output_path

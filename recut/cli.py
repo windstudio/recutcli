@@ -191,8 +191,7 @@ def main(
                 video_path=downloaded_video,
                 title=metadata["title"],
                 output_path=thumbnail_path,
-                platform=platform,
-                brand=title
+                platform=platform
             )
         except RuntimeError as e:
             click.echo(f"Warning: Failed to generate thumbnail: {e}")
