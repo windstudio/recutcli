@@ -146,37 +146,44 @@ def merge_video_audio_subtitle(
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
 
-            # Create a short video from the thumbnail
+            # Create a short video from the thumbnail with silent audio
+            # Use same audio params as main video (48000Hz, stereo)
             thumbnail_video = tmpdir / "thumbnail_video.mp4"
             _run_ffmpeg([
                 get_ffmpeg_path(),
                 "-loop", "1",
                 "-i", str(thumbnail_path),
+                "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",  # Match main video audio
                 "-t", str(thumbnail_duration),
                 "-c:v", "libx264", "-preset", "medium", "-crf", "23",
                 "-pix_fmt", "yuv420p",
-                "-an",  # No audio for thumbnail video
+                "-c:a", "aac", "-b:a", "128k",
+                "-shortest",
                 "-y", str(thumbnail_video)
             ])
 
-            # Concatenate thumbnail video with main video
+            # Concatenate thumbnail video with main video (re-encode for compatibility)
             concat_video = tmpdir / "concat_video.mp4"
             with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-                f.write(f"file '{thumbnail_video}'\n")
-                f.write(f"file '{video_path}'\n")
+                # Use absolute paths for concat list
+                f.write(f"file '{thumbnail_video.resolve()}'\n")
+                f.write(f"file '{video_path.resolve()}'\n")
                 list_file = f.name
 
             try:
                 _run_ffmpeg([
                     get_ffmpeg_path(), "-f", "concat", "-safe", "0",
-                    "-i", list_file, "-c", "copy", "-y", str(concat_video)
+                    "-i", list_file,
+                    "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "128k",
+                    "-y", str(concat_video)
                 ])
             finally:
                 Path(list_file).unlink()
 
             # Now merge with audio and subtitles
-            # Adjust subtitle timing to account for thumbnail duration
-            audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2[aout]"
+            # Use longest input for audio mixing (dubbing audio)
+            audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=longest[aout]"
 
             _run_ffmpeg([
                 get_ffmpeg_path(),
@@ -189,7 +196,6 @@ def merge_video_audio_subtitle(
                 "-c:v", "libx264", "-preset", "medium", "-crf", "23",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
-                "-shortest",
                 "-y", str(output_path)
             ])
     else:
