@@ -56,6 +56,7 @@ def get_metadata_generation_prompt(duration: int, english_title: str | None) -> 
 2. 口语化，适合短视频节奏
 3. 【重要】总字数精确控制在{min_chars}-{max_chars}字之间（目标{target_chars}字），这是硬性要求
 4. 按照自然的语义停顿分行，每行一个小句或短语
+5. 英文内容为语音识别结果，其中的品牌名称或产品型号可能不准确，如有英文标题且其中包含品牌名称或产品型号，请以英文标题中的名称和型号为准
 
 标题要求：
 - 简洁有力，不超过15个字
