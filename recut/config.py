@@ -44,11 +44,11 @@ def get_platform_config(platform: str, duration: int | None = None) -> PlatformC
 @dataclass
 class TTSConfig:
     """TTS configuration."""
-    engine: str = ""
-    voice: str = ""
-    coqui_voice: str = ""
-    piper_voice: str = ""
-    whisper_model: str = ""
+    engine: str = ""  # "edge" (default), "coqui", or "piper"
+    voice: str = ""  # Edge TTS default: zh-CN-XiaoxiaoNeural (Chinese female)
+    coqui_voice: str = ""  # Coqui default: tts_models/zh-CN/baker/tacotron2-DDC
+    piper_voice: str = ""  # Piper default: zh_CN-huayan-medium
+    whisper_model: str = ""  # Whisper model size: small, medium, large
 
 
 @dataclass
