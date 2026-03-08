@@ -79,10 +79,11 @@ def test_tts_config_from_env(monkeypatch):
 
 
 def test_api_config_defaults():
-    """Test APIConfig has correct defaults."""
+    """Test APIConfig dataclass defaults (empty strings)."""
     config = APIConfig()
     assert config.llm_api_key == ""
-    assert "ai-yuanjing" in config.llm_api_url
+    assert config.llm_api_url == ""
+    assert config.llm_model == ""
 
 
 def test_api_config_from_env(monkeypatch):

@@ -55,8 +55,8 @@ class TTSConfig:
 class APIConfig:
     """API configuration for external services."""
     llm_api_key: str = ""
-    llm_api_url: str = "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"
-    llm_model: str = "glm-5"
+    llm_api_url: str = ""
+    llm_model: str = ""
 
 
 def load_dotenv_config(env_path: Path | str | None = None) -> None:
