@@ -76,8 +76,6 @@ The tool supports any OpenAI-compatible API:
 - **LLM_API_URL** - API endpoint URL (default: Yuanjing API)
 - **LLM_MODEL** - Model name (default: glm-5)
 
-> **Note:** For backward compatibility, `YUANJING_API_KEY` is still supported.
-
 ### TTS Engines
 
 - **edge** (default) - Microsoft Edge TTS, high quality Chinese voice

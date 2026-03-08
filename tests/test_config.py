@@ -87,32 +87,33 @@ def test_api_config_defaults():
 
 def test_api_config_from_env(monkeypatch):
     """Test APIConfig reads from environment variables."""
-    # Clear LLM_API_KEY first to test YUANJING_API_KEY fallback
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
-    monkeypatch.setenv("YUANJING_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("LLM_API_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("LLM_MODEL", "gpt-4")
 
     config = get_api_config()
     assert config.llm_api_key == "test-key"
-    assert "ai-yuanjing" in config.llm_api_url
+    assert config.llm_api_url == "https://api.example.com/v1"
+    assert config.llm_model == "gpt-4"
 
 
 def test_load_dotenv():
     """Test that load_dotenv loads .env file."""
     with TemporaryDirectory() as tmpdir:
         env_file = Path(tmpdir) / ".env"
-        env_file.write_text("YUANJING_API_KEY=dotenv-key\n")
+        env_file.write_text("LLM_API_KEY=dotenv-key\n")
 
         # Clear any existing value
-        os.environ.pop("YUANJING_API_KEY", None)
+        os.environ.pop("LLM_API_KEY", None)
 
         # Load the .env file
         load_dotenv_config(env_file)
 
         # Verify the value was loaded
-        assert os.environ.get("YUANJING_API_KEY") == "dotenv-key"
+        assert os.environ.get("LLM_API_KEY") == "dotenv-key"
 
         # Cleanup
-        os.environ.pop("YUANJING_API_KEY", None)
+        os.environ.pop("LLM_API_KEY", None)
 
 
 def test_api_config_reads_llm_env_vars(monkeypatch):
@@ -128,20 +129,9 @@ def test_api_config_reads_llm_env_vars(monkeypatch):
     assert config.llm_model == "gpt-4"
 
 
-def test_api_config_fallback_to_yuanjing_key(monkeypatch):
-    """Test backward compatibility: fallback to YUANJING_API_KEY if LLM_API_KEY not set."""
-    monkeypatch.delenv("LLM_API_KEY", raising=False)
-    monkeypatch.setenv("YUANJING_API_KEY", "yuanjing-key-456")
-
-    config = get_api_config()
-
-    assert config.llm_api_key == "yuanjing-key-456"
-
-
 def test_api_config_default_values(monkeypatch):
     """Test default values when no env vars set."""
     monkeypatch.delenv("LLM_API_KEY", raising=False)
-    monkeypatch.delenv("YUANJING_API_KEY", raising=False)
     monkeypatch.delenv("LLM_API_URL", raising=False)
     monkeypatch.delenv("LLM_MODEL", raising=False)
 
