@@ -62,6 +62,7 @@ def transcode_for_platform(video_path: Path, output_path: Path, config: Platform
     _run_ffmpeg([
         get_ffmpeg_path(), "-i", str(video_path),
         "-vf", f"{scale_filter},{pad_filter}",
+        "-r", "30",  # Maintain 30fps to preserve video timing
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart", "-y", str(output_path)
@@ -216,6 +217,7 @@ def _process_with_thumbnail(
         "-i", str(thumbnail_path),
         "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
         "-t", str(thumbnail_duration),
+        "-r", "30",  # Match video frame rate
         "-c:v", "libx264", "-preset", "medium", "-crf", "23",
         "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "128k",
@@ -234,6 +236,7 @@ def _process_with_thumbnail(
         _run_ffmpeg([
             get_ffmpeg_path(), "-f", "concat", "-safe", "0",
             "-i", list_file,
+            "-r", "30",  # Maintain consistent frame rate
             "-c:v", "libx264", "-preset", "medium", "-crf", "23",
             "-c:a", "aac", "-b:a", "128k",
             "-y", str(concat_video)
