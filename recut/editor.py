@@ -157,7 +157,8 @@ def merge_video_audio_subtitle(
     else:
         # No thumbnail, process directly
         subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
-        audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=longest[aout]"
+        # Use duration=first to follow dubbing audio length
+        audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
 
         if has_logo:
             # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
@@ -250,7 +251,8 @@ def _process_with_thumbnail(
     subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60'"
 
     # Build FFmpeg command based on logo presence
-    audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=longest[aout]"
+    # Use duration=first to follow dubbing audio length
+    audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
 
     if has_logo:
         # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
