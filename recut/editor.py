@@ -174,6 +174,7 @@ def merge_video_audio_subtitle(
                 "-c:v", "libx264", "-preset", "medium", "-crf", "23",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
+                "-shortest",  # Trim video to match audio duration
                 "-y", str(output_path)
             ])
         else:
@@ -188,6 +189,7 @@ def merge_video_audio_subtitle(
                 "-c:v", "libx264", "-preset", "medium", "-crf", "23",
                 "-c:a", "aac", "-b:a", "128k",
                 "-movflags", "+faststart",
+                "-shortest",  # Trim video to match audio duration
                 "-y", str(output_path)
             ])
 
@@ -265,6 +267,7 @@ def _process_with_thumbnail(
             "-c:v", "libx264", "-preset", "medium", "-crf", "23",
             "-c:a", "aac", "-b:a", "128k",
             "-movflags", "+faststart",
+            "-shortest",  # Trim video to match dubbing audio duration
             "-y", str(output_path)
         ])
     else:
@@ -279,6 +282,7 @@ def _process_with_thumbnail(
             "-c:v", "libx264", "-preset", "medium", "-crf", "23",
             "-c:a", "aac", "-b:a", "128k",
             "-movflags", "+faststart",
+            "-shortest",  # Trim video to match dubbing audio duration
             "-y", str(output_path)
         ])
 
