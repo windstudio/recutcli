@@ -97,18 +97,15 @@ def align_subtitle(
     output_path: Path,
     time_offset: float = 0.0
 ) -> Path:
-    """Align subtitle text with expected text, creating segments per line.
+    """Align subtitle text with expected text, preserving Whisper timestamps.
 
     This function takes an SRT file with timestamps from Whisper transcription
-    and creates new segments based on the expected text lines.
-
-    Each line in expected_text becomes one subtitle segment, with time
-    distributed proportionally based on character count.
-    Within each segment, text is split by Chinese punctuation for proper
-    line breaks in display.
+    of TTS audio and replaces the text with expected text while preserving
+    the actual timing. Falls back to proportional distribution if segment
+    count doesn't match.
 
     Args:
-        srt_path: Path to input SRT file (used for total duration)
+        srt_path: Path to input SRT file (from Whisper transcription)
         expected_text: Expected correct text (multi-line, each line = one segment)
         output_path: Path to output SRT file
         time_offset: Time offset in seconds to add to all timestamps (default 0.0)
@@ -120,54 +117,64 @@ def align_subtitle(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Parse original SRT to get total duration
+    # Parse original SRT to get segments with timestamps
     content = srt_path.read_text(encoding="utf-8")
     blocks = content.strip().split("\n\n")
 
-    total_duration = 0.0
+    whisper_segments = []
     for block in blocks:
         lines = block.strip().split("\n")
-        if len(lines) >= 2:
+        if len(lines) >= 3:
             timestamp = lines[1]
             try:
                 start_str, end_str = timestamp.split(" --> ")
                 start = _parse_timestamp(start_str.strip())
                 end = _parse_timestamp(end_str.strip())
-                total_duration = max(total_duration, end)
+                text = "\n".join(lines[2:])  # Handle multi-line text
+                whisper_segments.append((start, end, text))
             except Exception:
                 continue
 
-    if total_duration == 0:
-        total_duration = 30.0  # Default fallback
-
-    # Get text lines (each line becomes one subtitle segment)
+    # Get expected text lines
     text_lines = [line.strip() for line in expected_text.strip().split("\n") if line.strip()]
 
     if not text_lines:
         output_path.write_text("", encoding="utf-8")
         return output_path
 
-    # Calculate duration per character for proportional distribution
+    # If Whisper segment count matches expected text lines, use actual timings
+    if len(whisper_segments) == len(text_lines):
+        new_blocks = []
+        for i, (line, (start, end, _)) in enumerate(zip(text_lines, whisper_segments)):
+            start_ts = _format_timestamp(start + time_offset)
+            end_ts = _format_timestamp(end + time_offset)
+
+            # Split line by punctuation for proper display line breaks
+            segments = _split_by_punctuation(line)
+            display_text = "\\N".join(segments)
+
+            new_blocks.append(f"{i + 1}\n{start_ts} --> {end_ts}\n{display_text}")
+
+        output_path.write_text("\n\n".join(new_blocks) + "\n", encoding="utf-8")
+        return output_path
+
+    # Fallback: proportional distribution based on character count
+    total_duration = whisper_segments[-1][1] if whisper_segments else 30.0
     total_chars = sum(len(line) for line in text_lines)
     char_duration = total_duration / total_chars if total_chars > 0 else total_duration / len(text_lines)
 
-    # Generate new subtitle blocks
     new_blocks = []
-    current_time = time_offset  # Start with offset
+    current_time = time_offset
 
     for i, line in enumerate(text_lines):
-        # Calculate duration based on character count
         line_duration = len(line) * char_duration
         start_time = current_time
         end_time = current_time + line_duration
 
-        # Format timestamps
         start_ts = _format_timestamp(start_time)
         end_ts = _format_timestamp(end_time)
 
-        # Split line by punctuation for proper display line breaks
         segments = _split_by_punctuation(line)
-        # Join segments with \N (SRT line break)
         display_text = "\\N".join(segments)
 
         new_blocks.append(f"{i + 1}\n{start_ts} --> {end_ts}\n{display_text}")

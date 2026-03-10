@@ -36,6 +36,7 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 @click.option("--tts-engine", type=click.Choice(["edge", "coqui", "piper"]), default=None, help="TTS engine")
 @click.option("--duration", type=int, default=None, help="Video duration in seconds (default: 30)")
 @click.option("--title", help="English title from video page (optional)")
+@click.option("--image", type=str, help="主素材图路径或URL（用于封面图生成）")
 @click.version_option(version=__version__)
 def main(
     url: str,
@@ -45,7 +46,8 @@ def main(
     m3u8_url: str | None,
     tts_engine: str | None,
     duration: int | None,
-    title: str | None
+    title: str | None,
+    image: str | None
 ):
     """Download Kickstarter video and create a short social media video."""
     load_dotenv_config()
@@ -176,15 +178,36 @@ def main(
         except Exception as e:
             _exit_on_error("generating subtitles", e)
 
-        # Generate thumbnail from original video's first frame
+        # Generate thumbnail from original video's first frame or main image
         click.echo("Generating thumbnail...")
         thumbnail_path = tmpdir / "thumbnail.jpg"
+
+        # Handle image parameter: download if URL, use directly if local path
+        if image:
+            if image.startswith(("http://", "https://")):
+                import urllib.request
+                image_path = tmpdir / "cover_image.jpg"
+                try:
+                    # Add User-Agent header to avoid 403 Forbidden
+                    request = urllib.request.Request(image, headers={"User-Agent": "Mozilla/5.0"})
+                    with urllib.request.urlopen(request, timeout=30) as response:
+                        image_path.write_bytes(response.read())
+                    click.echo(f"Downloaded cover image to: {image_path}")
+                except Exception as e:
+                    click.echo(f"Warning: Failed to download cover image: {e}")
+                    image_path = None
+            else:
+                image_path = Path(image)
+        else:
+            image_path = None
+
         try:
             generate_thumbnail(
                 video_path=downloaded_video,
                 title=metadata["title"],
                 output_path=thumbnail_path,
-                platform=platform
+                platform=platform,
+                image_path=image_path
             )
         except RuntimeError as e:
             click.echo(f"Warning: Failed to generate thumbnail: {e}")
