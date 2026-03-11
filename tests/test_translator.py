@@ -273,3 +273,111 @@ def test_save_chinese_script_without_source_url():
 
         assert "# Title\n测试标题" in content
         assert "Source URL" not in content
+
+
+# Tests for chs_title parameter
+
+def test_translate_and_generate_metadata_with_chs_title_override(monkeypatch):
+    """Test that chs_title overrides LLM-generated title."""
+    from recut.translator import translate_and_generate_metadata
+
+    def mock_create(**kwargs):
+        return type('Response', (), {
+            'choices': [type('Choice', (), {
+                'message': type('Message', (), {
+                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n第一句\n第二句\n---TAGS---\n标签1,标签2"
+                })
+            })]
+        })()
+
+    monkeypatch.setattr("recut.translator.OpenAI", lambda **kw: type('Client', (), {
+        'chat': type('Chat', (), {
+            'completions': type('Completions', (), {'create': mock_create})
+        })
+    })())
+
+    result = translate_and_generate_metadata(
+        english_text="Hello world",
+        api_key="test-key",
+        base_url="https://api.test.com/v1",
+        model="test-model",
+        duration=30,
+        chs_title="自定义中文标题"
+    )
+
+    # Title should be overridden by chs_title
+    assert result["title"] == "自定义中文标题"
+    assert result["transcript"] == "第一句\n第二句"
+    assert result["tags"] == ["标签1", "标签2"]
+
+
+def test_translate_and_generate_metadata_with_empty_chs_title(monkeypatch):
+    """Test that empty chs_title does not override LLM-generated title."""
+    from recut.translator import translate_and_generate_metadata
+
+    def mock_create(**kwargs):
+        return type('Response', (), {
+            'choices': [type('Choice', (), {
+                'message': type('Message', (), {
+                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签"
+                })
+            })]
+        })()
+
+    monkeypatch.setattr("recut.translator.OpenAI", lambda **kw: type('Client', (), {
+        'chat': type('Chat', (), {
+            'completions': type('Completions', (), {'create': mock_create})
+        })
+    })())
+
+    # Empty string should not override
+    result = translate_and_generate_metadata(
+        english_text="test",
+        api_key="test-key",
+        base_url="https://api.test.com/v1",
+        model="test-model",
+        duration=30,
+        chs_title=""
+    )
+    assert result["title"] == "LLM生成的标题"
+
+    # Whitespace-only string should not override
+    result = translate_and_generate_metadata(
+        english_text="test",
+        api_key="test-key",
+        base_url="https://api.test.com/v1",
+        model="test-model",
+        duration=30,
+        chs_title="   "
+    )
+    assert result["title"] == "LLM生成的标题"
+
+
+def test_translate_and_generate_metadata_without_chs_title(monkeypatch):
+    """Test that None chs_title uses LLM-generated title."""
+    from recut.translator import translate_and_generate_metadata
+
+    def mock_create(**kwargs):
+        return type('Response', (), {
+            'choices': [type('Choice', (), {
+                'message': type('Message', (), {
+                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签"
+                })
+            })]
+        })()
+
+    monkeypatch.setattr("recut.translator.OpenAI", lambda **kw: type('Client', (), {
+        'chat': type('Chat', (), {
+            'completions': type('Completions', (), {'create': mock_create})
+        })
+    })())
+
+    result = translate_and_generate_metadata(
+        english_text="test",
+        api_key="test-key",
+        base_url="https://api.test.com/v1",
+        model="test-model",
+        duration=30,
+        chs_title=None
+    )
+    assert result["title"] == "LLM生成的标题"

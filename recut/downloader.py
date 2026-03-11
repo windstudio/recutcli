@@ -1,6 +1,7 @@
 """Download and merge m3u8 video streams."""
 
 import subprocess
+import urllib.request
 from pathlib import Path
 
 # Try to get ffmpeg from imageio-ffmpeg as fallback
@@ -86,8 +87,6 @@ def download_video(url: str, output_path: Path, retries: int = 3) -> Path:
     Raises:
         RuntimeError: If download fails after all retries
     """
-    import urllib.request
-
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
