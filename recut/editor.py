@@ -111,7 +111,7 @@ def merge_video_audio_subtitle(
     subtitle_path: Path,
     output_path: Path,
     dubbing_volume: float = 1.0,
-    original_volume: float = 0.15,
+    original_volume: float = 0.2,
     thumbnail_path: Path | None = None,
     logo_path: Path | None = None
 ) -> Path:
@@ -124,7 +124,7 @@ def merge_video_audio_subtitle(
         subtitle_path: Path to SRT subtitle file
         output_path: Path for output video
         dubbing_volume: Volume for dubbing audio (default 1.0)
-        original_volume: Volume for original background audio (default 0.15)
+        original_volume: Volume for original background audio (default 0.2)
         thumbnail_path: Optional path to thumbnail image to prepend as first frame (0.5s)
         logo_path: Optional path to logo image to overlay throughout video
 
