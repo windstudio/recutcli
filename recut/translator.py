@@ -19,12 +19,17 @@ def _get_season(month: int) -> str:
         return "冬季"
 
 
-def get_metadata_generation_prompt(duration: int, english_title: str | None) -> str:
+def get_metadata_generation_prompt(
+    duration: int,
+    english_title: str | None,
+    chs_title: str | None = None
+) -> str:
     """Generate prompt for metadata generation.
 
     Args:
         duration: Target video duration in seconds
         english_title: Optional English title to translate/refine
+        chs_title: Optional Chinese title to use directly
 
     Returns:
         Prompt string for LLM
@@ -41,11 +46,13 @@ def get_metadata_generation_prompt(duration: int, english_title: str | None) -> 
     current_month = f"{now.month}月"
     season = _get_season(now.month)
 
-    title_instruction = (
-        f"英文标题：{english_title}\n请将此英文标题翻译并润色为吸引眼球的中文标题。"
-        if english_title
-        else "请根据口播文案提炼吸引眼球的中文标题。"
-    )
+    # Title instruction based on available titles
+    if chs_title and chs_title.strip():
+        title_instruction = f"中文标题：{chs_title}\n请直接使用此中文标题，无需翻译或修改。"
+    elif english_title:
+        title_instruction = f"英文标题：{english_title}\n请将此英文标题翻译并润色为吸引眼球的中文标题。"
+    else:
+        title_instruction = "请根据口播文案提炼吸引眼球的中文标题。"
 
     return f"""你是一位专业的短视频文案创作者。请将以下英文内容翻译成中文，并生成完整的短视频元数据。
 
@@ -57,7 +64,7 @@ def get_metadata_generation_prompt(duration: int, english_title: str | None) -> 
 3. 【重要】总字数精确控制在{min_chars}-{max_chars}字之间（目标{target_chars}字），这是硬性要求
 4. 3秒钩子吸睛、抓人，自带好奇、利益、反差、痛点其中一种
 5. 按照自然的语义停顿分行，每行一个小句或短语
-6. 英文内容为语音识别结果，其中的品牌或型号可能不准确，如有英文标题且其中包含品牌或型号，请以英文标题中的品牌和型号为准
+6. 英文内容为语音识别结果，其中的品牌或型号可能不准确，如有中文/英文标题且其中包含品牌或型号，请以中文/英文标题中的品牌和型号为准
 
 标题要求：
 - 简洁有力，不超过15个字
@@ -147,7 +154,7 @@ def translate_and_generate_metadata(
     )
 
     try:
-        prompt = get_metadata_generation_prompt(duration, english_title)
+        prompt = get_metadata_generation_prompt(duration, english_title, chs_title)
         response = client.chat.completions.create(
             model=model,
             messages=[
