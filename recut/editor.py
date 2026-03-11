@@ -156,7 +156,7 @@ def merge_video_audio_subtitle(
             )
     else:
         # No thumbnail, process directly
-        subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize=20'"
+        subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize=16'"
         # Use duration=first to follow dubbing audio length
         audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
 
@@ -248,7 +248,7 @@ def _process_with_thumbnail(
         Path(list_file).unlink()
 
     # Apply subtitles (timestamps already include offset if thumbnail was generated)
-    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize=20'"
+    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize=16'"
 
     # Build FFmpeg command based on logo presence
     # Use duration=first to follow dubbing audio length
