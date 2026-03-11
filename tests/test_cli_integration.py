@@ -55,11 +55,11 @@ def test_cli_integration_dubbing_workflow():
             Path(output).write_bytes(b"fake video")
             return output
 
-        def mock_save_chinese_script(path, metadata):
+        def mock_save_chinese_script(path, metadata, source_url=None):
             Path(path).write_text("# Title\nTest\n\n# Transcript\nTest transcript\n\n# Tags\n#tag1 #tag2\n")
             return path
 
-        def mock_generate_thumbnail(video_path, title, output_path, platform="tiktok", font_path=None):
+        def mock_generate_thumbnail(video_path, title, output_path, platform="tiktok", font_path=None, image_path=None):
             # Create a fake thumbnail file
             Path(output_path).write_bytes(b"fake thumbnail")
             return output_path
@@ -73,7 +73,7 @@ def test_cli_integration_dubbing_workflow():
 
         # Mock all external dependencies
         with patch("recut.cli.fetch_kickstarter_page", return_value="<html>test</html>"), \
-             patch("recut.cli.extract_m3u8_url", return_value="https://test.m3u8"), \
+             patch("recut.cli.extract_m3u8_url", return_value="https://test.com/video.m3u8"), \
              patch("recut.cli.download_and_merge_m3u8", side_effect=mock_download), \
              patch("recut.cli.detect_scenes", return_value=[]), \
              patch("recut.cli.select_top_fragments", return_value=[]), \
@@ -98,10 +98,11 @@ def test_cli_integration_dubbing_workflow():
             # Verify workflow was called
             assert result.exit_code == 0, f"CLI failed: {result.output}"
 
-            # Verify dubbing audio was saved
-            dubbing_output = tmpdir / "output_dubbing.wav"
-            assert dubbing_output.exists(), "Dubbing audio file should be saved"
+            # Verify dubbing audio was saved in intermediate directory
+            intermediate_dir = tmpdir / "output"
+            dubbing_output = intermediate_dir / "output_dubbing.wav"
+            assert dubbing_output.exists(), "Dubbing audio file should be saved in intermediate directory"
 
-            # Verify Chinese script uses _chs suffix
-            chs_script = tmpdir / "output_chs.md"
-            assert chs_script.exists(), "Chinese script should use _chs suffix"
+            # Verify Chinese script uses output.md naming (no _chs suffix) in parent directory
+            chs_script = tmpdir / "output.md"
+            assert chs_script.exists(), "Chinese script should be saved as output.md in parent directory"
