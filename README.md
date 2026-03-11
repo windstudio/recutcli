@@ -31,7 +31,7 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 | `--chs-title` | Chinese title - skip LLM title generation |
 | `--title` | English title from video page (optional, used for generating Chinese title) |
 | `--image` | Main image URL or path for thumbnail generation |
-| `--tts-engine` | TTS engine: edge, coqui, piper (default: edge) |
+| `--tts-engine` | TTS engine: edge, coqui, minimax (default: edge) |
 
 ### Examples
 
@@ -124,7 +124,19 @@ The tool supports any OpenAI-compatible API:
 
 - **edge** (default) - Microsoft Edge TTS, high quality Chinese voice
 - **coqui** - Open-source TTS (requires Python 3.9-3.11)
-- **piper** - Offline TTS using ONNX models
+- **minimax** - MiniMax cloud TTS API, high quality Chinese voice
+
+### MiniMax Configuration
+
+To use MiniMax TTS, set these environment variables:
+
+```env
+MINIMAX_API_KEY=your-api-key
+MINIMAX_API_URL=https://api.minimaxi.com/v1/t2a_v2
+MINIMAX_VOICE_ID=moss_audio_ce44fc67-7ce3-11f0-8de5-96e35d26fb85
+```
+
+Get your API key from [MiniMax Platform](https://platform.minimaxi.com).
 
 ### Thumbnail Configuration
 
