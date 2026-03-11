@@ -7,7 +7,8 @@ from tempfile import TemporaryDirectory
 
 import click
 
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
+import re
 
 from recut import __version__
 from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration
@@ -22,6 +23,23 @@ from recut.subtitle import generate_srt, align_subtitle
 from recut.thumbnail import generate_thumbnail
 
 
+def _extract_filename_from_url(url: str) -> str:
+    """Extract a valid filename from URL path's last segment.
+
+    Example:
+        https://example.com/projects/user/my-project-name?ref=xxx
+        -> my-project-name
+    """
+    parsed = urlparse(url)
+    # Get path and remove trailing slash
+    path = unquote(parsed.path).rstrip('/')
+    # Get last segment
+    last_segment = path.split('/')[-1] if path else 'output'
+    # Sanitize: keep only alphanumeric, hyphen, underscore
+    filename = re.sub(r'[^\w\-]', '-', last_segment)
+    return filename or 'output'
+
+
 def _exit_on_error(message: str, error: Exception | None = None) -> None:
     """Print error message and exit."""
     detail = f": {error}" if error else ""
@@ -31,7 +49,7 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 
 @click.command()
 @click.argument("url")
-@click.option("-o", "--output", required=True, help="Output video file path")
+@click.option("-o", "--output", default=None, help="Output video file path (default: auto-generated from URL)")
 @click.option("--platform", type=click.Choice(list(PLATFORMS.keys())), default="tiktok", help="Target platform")
 @click.option("--scene-threshold", type=float, default=0.3, help="Scene change detection threshold")
 @click.option("--video-url", help="Direct video URL (mp4, avi, m3u8, etc.)")
@@ -43,7 +61,7 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 @click.version_option(version=__version__)
 def main(
     url: str,
-    output: str,
+    output: str | None,
     platform: str,
     scene_threshold: float,
     video_url: str | None,
@@ -56,6 +74,14 @@ def main(
     """Download video from URL and create a short social media video with Chinese dubbing."""
     load_dotenv_config()
 
+    # Generate default output path from URL if not specified
+    if not output:
+        filename = _extract_filename_from_url(url)
+        output = f"{filename}.mp4"
+
+    # Prepend 'output' base directory
+    output_path = Path("output") / output
+
     # Convert literal \n to actual newlines in chs_title
     if chs_title:
         chs_title = chs_title.replace('\\n', '\n')
@@ -67,7 +93,6 @@ def main(
     if not check_ffmpeg():
         _exit_on_error(FFMPEG_INSTALL_MSG)
 
-    output_path = Path(output)
     config = get_platform_config(platform, duration=duration)
     tts_config = get_tts_config()
 
