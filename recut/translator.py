@@ -162,12 +162,13 @@ def translate_and_generate_metadata(
         raise RuntimeError(f"Metadata generation failed: {e}")
 
 
-def save_chinese_script(output_path: str | Path, metadata: dict) -> None:
+def save_chinese_script(output_path: str | Path, metadata: dict, source_url: str | None = None) -> None:
     """Save Chinese script with metadata to markdown file.
 
     Args:
         output_path: Path to save the markdown file
         metadata: dict with keys: title, transcript, tags
+        source_url: Optional source URL to include in the file
 
     Raises:
         ValueError: If metadata is missing required keys
@@ -193,5 +194,8 @@ def save_chinese_script(output_path: str | Path, metadata: dict) -> None:
 # Tags
 {tags_formatted}
 """
+
+    if source_url:
+        content += f"\n# Source URL\n{source_url}\n"
 
     path.write_text(content, encoding="utf-8")

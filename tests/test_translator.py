@@ -231,3 +231,45 @@ def test_save_chinese_script_missing_keys():
         output_path = Path(tmpdir) / "test_chs.md"
         with pytest.raises(ValueError, match="missing required keys"):
             save_chinese_script(output_path, {"title": "test"})
+
+
+def test_save_chinese_script_with_source_url():
+    """Test saving Chinese script with source URL."""
+    from recut.translator import save_chinese_script
+
+    metadata = {
+        "title": "测试标题",
+        "transcript": "内容文案",
+        "tags": ["标签1", "标签2"]
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "test_chs.md"
+        save_chinese_script(output_path, metadata, source_url="https://example.com/video/123")
+
+        content = output_path.read_text(encoding="utf-8")
+
+        assert "# Title\n测试标题" in content
+        assert "# Transcript\n内容文案" in content
+        assert "# Tags\n#标签1 #标签2" in content
+        assert "# Source URL\nhttps://example.com/video/123" in content
+
+
+def test_save_chinese_script_without_source_url():
+    """Test saving Chinese script without source URL (backward compatibility)."""
+    from recut.translator import save_chinese_script
+
+    metadata = {
+        "title": "测试标题",
+        "transcript": "内容文案",
+        "tags": ["标签1"]
+    }
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "test_chs.md"
+        save_chinese_script(output_path, metadata, source_url=None)
+
+        content = output_path.read_text(encoding="utf-8")
+
+        assert "# Title\n测试标题" in content
+        assert "Source URL" not in content
