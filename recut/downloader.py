@@ -70,3 +70,36 @@ def download_and_merge_m3u8(m3u8_url: str, output_path: Path, retries: int = 3) 
             if attempt == retries - 1:
                 raise RuntimeError(f"Failed to download video after {retries} attempts")
             continue
+
+
+def download_video(url: str, output_path: Path, retries: int = 3) -> Path:
+    """Download video from URL directly.
+
+    Args:
+        url: URL of the video file (mp4, avi, etc.)
+        output_path: Path to save the video
+        retries: Number of retry attempts on failure
+
+    Returns:
+        Path to the downloaded video file
+
+    Raises:
+        RuntimeError: If download fails after all retries
+    """
+    import urllib.request
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    for attempt in range(retries):
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(request, timeout=60) as response:
+                output_path.write_bytes(response.read())
+            return output_path
+        except Exception as e:
+            if attempt == retries - 1:
+                raise RuntimeError(f"Failed to download video after {retries} attempts: {e}")
+            continue
+
+    return output_path
