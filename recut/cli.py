@@ -7,6 +7,8 @@ from tempfile import TemporaryDirectory
 
 import click
 
+from urllib.parse import urlparse
+
 from recut import __version__
 from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration
 from recut.config import get_platform_config, PLATFORMS, load_dotenv_config, get_api_config, get_tts_config, get_thumbnail_config
@@ -51,7 +53,7 @@ def main(
     chs_title: str | None,
     image: str | None
 ):
-    """Download Kickstarter video and create a short social media video."""
+    """Download video from URL and create a short social media video with Chinese dubbing."""
     load_dotenv_config()
 
     api_config = get_api_config()
@@ -91,7 +93,9 @@ def main(
         # Download video
         click.echo("Downloading video...")
         try:
-            if video_url.endswith(".m3u8"):
+            # Use urlparse to handle URLs with query parameters correctly
+            parsed_url = urlparse(video_url)
+            if parsed_url.path.endswith(".m3u8"):
                 download_and_merge_m3u8(video_url, downloaded_video)
             else:
                 download_video(video_url, downloaded_video)
