@@ -10,7 +10,7 @@ import click
 from recut import __version__
 from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration
 from recut.config import get_platform_config, PLATFORMS, load_dotenv_config, get_api_config, get_tts_config, get_thumbnail_config
-from recut.downloader import check_ffmpeg, download_and_merge_m3u8, FFMPEG_INSTALL_MSG
+from recut.downloader import check_ffmpeg, download_and_merge_m3u8, download_video, FFMPEG_INSTALL_MSG
 from recut.editor import create_short, extract_audio_for_mixing, merge_video_audio_subtitle
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
 from recut.transcriber import extract_audio, transcribe_audio, save_transcript
@@ -32,10 +32,11 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 @click.option("-o", "--output", required=True, help="Output video file path")
 @click.option("--platform", type=click.Choice(list(PLATFORMS.keys())), default="tiktok", help="Target platform")
 @click.option("--scene-threshold", type=float, default=0.3, help="Scene change detection threshold")
-@click.option("--m3u8-url", help="Direct m3u8 URL (skip Kickstarter scraping)")
+@click.option("--video-url", help="Direct video URL (mp4, avi, m3u8, etc.)")
 @click.option("--tts-engine", type=click.Choice(["edge", "coqui", "piper"]), default=None, help="TTS engine")
 @click.option("--duration", type=int, default=None, help="Video duration in seconds (default: 30)")
 @click.option("--title", help="English title from video page (optional)")
+@click.option("--chs-title", help="Chinese title (skip LLM title generation)")
 @click.option("--image", type=str, help="主素材图路径或URL（用于封面图生成）")
 @click.version_option(version=__version__)
 def main(
@@ -43,10 +44,11 @@ def main(
     output: str,
     platform: str,
     scene_threshold: float,
-    m3u8_url: str | None,
+    video_url: str | None,
     tts_engine: str | None,
     duration: int | None,
     title: str | None,
+    chs_title: str | None,
     image: str | None
 ):
     """Download Kickstarter video and create a short social media video."""
@@ -63,8 +65,14 @@ def main(
     config = get_platform_config(platform, duration=duration)
     tts_config = get_tts_config()
 
+    # Define output structure early
+    output_parent = output_path.parent
+    output_stem = output_path.stem
+    intermediate_dir = output_parent / output_stem
+    intermediate_dir.mkdir(parents=True, exist_ok=True)
+
     # Get video URL
-    if not m3u8_url:
+    if not video_url:
         click.echo(f"Fetching Kickstarter page: {url}")
         try:
             html = fetch_kickstarter_page(url)
@@ -72,8 +80,8 @@ def main(
             _exit_on_error("fetching page", e)
 
         click.echo("Extracting video URL...")
-        m3u8_url = extract_m3u8_url(html)
-        if not m3u8_url:
+        video_url = extract_m3u8_url(html)
+        if not video_url:
             _exit_on_error("Could not find video URL in page")
 
     with TemporaryDirectory() as tmpdir:
@@ -83,7 +91,10 @@ def main(
         # Download video
         click.echo("Downloading video...")
         try:
-            download_and_merge_m3u8(m3u8_url, downloaded_video)
+            if video_url.endswith(".m3u8"):
+                download_and_merge_m3u8(video_url, downloaded_video)
+            else:
+                download_video(video_url, downloaded_video)
         except Exception as e:
             _exit_on_error("downloading video", e)
 
@@ -114,7 +125,7 @@ def main(
             _exit_on_error("transcribing audio", e)
 
         # Save transcript
-        script_path = output_path.with_stem(output_path.stem + "_script").with_suffix(".md")
+        script_path = intermediate_dir / f"{output_stem}_script.md"
         click.echo(f"Saving transcript to: {script_path}")
         try:
             save_transcript(transcript, script_path)
@@ -130,15 +141,16 @@ def main(
                 base_url=api_config.llm_api_url,
                 model=api_config.llm_model,
                 duration=config.max_duration,
-                english_title=title
+                english_title=title,
+                chs_title=chs_title
             )
         except Exception as e:
             _exit_on_error("generating metadata", e)
 
-        chs_script_path = output_path.with_stem(output_path.stem + "_chs").with_suffix(".md")
+        chs_script_path = output_parent / f"{output_stem}.md"
         click.echo(f"Saving Chinese script to: {chs_script_path}")
         try:
-            save_chinese_script(chs_script_path, metadata)
+            save_chinese_script(chs_script_path, metadata, source_url=url)
         except Exception as e:
             _exit_on_error("saving Chinese script", e)
 
@@ -164,9 +176,10 @@ def main(
 
         # Create short video
         click.echo(f"Creating short video for {platform}...")
-        create_short(downloaded_video, selected, output_path, config)
+        nodub_video_path = intermediate_dir / f"{output_stem}_nodub.mp4"
+        create_short(downloaded_video, selected, nodub_video_path, config)
 
-        dubbing_output_path = output_path.with_stem(output_path.stem + "_dubbing").with_suffix(".wav")
+        dubbing_output_path = intermediate_dir / f"{output_stem}_dubbing.wav"
         click.echo(f"Saving dubbing audio to: {dubbing_output_path}")
         shutil.copy2(dubbing_path, dubbing_output_path)
 
@@ -226,12 +239,11 @@ def main(
         click.echo("Extracting original audio for mixing...")
         original_audio_path = tmpdir / "original.wav"
         try:
-            extract_audio_for_mixing(output_path, original_audio_path)
+            extract_audio_for_mixing(nodub_video_path, original_audio_path)
         except Exception as e:
             _exit_on_error("extracting original audio", e)
 
         click.echo("Merging video with dubbing and subtitles...")
-        final_output_path = output_path.with_stem(output_path.stem + "_final")
 
         # Get logo path from config
         thumbnail_config = get_thumbnail_config()
@@ -239,7 +251,7 @@ def main(
 
         try:
             merge_video_audio_subtitle(
-                output_path, original_audio_path, dubbing_path, aligned_srt_path, final_output_path,
+                nodub_video_path, original_audio_path, dubbing_path, aligned_srt_path, output_path,
                 thumbnail_path=thumbnail_path,
                 logo_path=logo_path
             )
@@ -247,16 +259,19 @@ def main(
             _exit_on_error("merging video", e)
 
         # Save output files
-        shutil.copy2(aligned_srt_path, output_path.with_suffix(".srt"))
-        shutil.copy2(downloaded_video, output_path.with_stem(output_path.stem + "_raw"))
+        srt_output_path = intermediate_dir / f"{output_stem}.srt"
+        shutil.copy2(aligned_srt_path, srt_output_path)
+
+        raw_video_path = intermediate_dir / f"{output_stem}_raw.mp4"
+        shutil.copy2(downloaded_video, raw_video_path)
 
         # Save thumbnail to output directory
         if thumbnail_path and thumbnail_path.exists():
-            thumbnail_output_path = output_path.with_stem(output_path.stem + "_thumb").with_suffix(".jpg")
+            thumbnail_output_path = intermediate_dir / f"{output_stem}_thumb.jpg"
             shutil.copy2(thumbnail_path, thumbnail_output_path)
             click.echo(f"Thumbnail saved to: {thumbnail_output_path}")
 
-    click.echo(f"Done! Output saved to: {final_output_path}")
+    click.echo(f"Done! Output saved to: {output_path}")
 
 
 if __name__ == "__main__":
