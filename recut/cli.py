@@ -56,6 +56,10 @@ def main(
     """Download video from URL and create a short social media video with Chinese dubbing."""
     load_dotenv_config()
 
+    # Convert literal \n to actual newlines in chs_title
+    if chs_title:
+        chs_title = chs_title.replace('\\n', '\n')
+
     api_config = get_api_config()
     if not api_config.llm_api_key:
         _exit_on_error("LLM_API_KEY not set. Please set it in .env file.")
