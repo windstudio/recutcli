@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 from recut.analyzer import Scene
-from recut.config import PlatformConfig
+from recut.config import PlatformConfig, get_thumbnail_config
 from recut.downloader import get_ffmpeg_path
 
 
@@ -141,6 +141,9 @@ def merge_video_audio_subtitle(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Get subtitle font size from config
+    subtitle_font_size = get_thumbnail_config().font_size_subtitle
+
     # Prepare subtitle path for FFmpeg (handle Windows paths)
     subtitle_path_str = str(subtitle_path).replace("\\", "/")
     if len(subtitle_path_str) > 1 and subtitle_path_str[1] == ":":
@@ -163,7 +166,7 @@ def merge_video_audio_subtitle(
             )
     else:
         # No thumbnail, process directly
-        subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize=14'"
+        subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize={subtitle_font_size}'"
         # Use duration=first to follow dubbing audio length
         audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
 
@@ -220,6 +223,9 @@ def _process_with_thumbnail(
     logo_path: Path | None
 ) -> Path:
     """Process video with thumbnail prepended."""
+    # Get subtitle font size from config
+    subtitle_font_size = get_thumbnail_config().font_size_subtitle
+
     # Prepend thumbnail as first frame (0.5s)
     thumbnail_video = tmpdir / "thumbnail_video.mp4"
     _run_ffmpeg([
@@ -256,7 +262,7 @@ def _process_with_thumbnail(
         Path(list_file).unlink()
 
     # Apply subtitles (timestamps already include offset if thumbnail was generated)
-    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize=14'"
+    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize={subtitle_font_size}'"
 
     # Build FFmpeg command based on logo presence
     # Use duration=first to follow dubbing audio length

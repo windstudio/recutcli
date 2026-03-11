@@ -151,7 +151,7 @@ THUMBNAIL_DEFAULT_FONTS=ZCOOLGaoDuanHei-Regular.ttf,NotoSansSC-Bold.ttf
 
 # Optional: Font sizes
 THUMBNAIL_FONT_SIZE_TITLE=72
-THUMBNAIL_FONT_SIZE_SUBTITLE=36
+THUMBNAIL_FONT_SIZE_SUBTITLE=14
 
 # Optional: Logo to overlay throughout video (top-left corner, 70% opacity)
 THUMBNAIL_LOGO_PATH=images/logo.png

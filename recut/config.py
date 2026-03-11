@@ -111,7 +111,7 @@ class ThumbnailConfig:
     """Thumbnail generation configuration."""
     font_path: str = ""  # Path to Chinese font file
     font_size_title: int = 72  # Font size for title
-    font_size_subtitle: int = 36  # Font size for subtitle/brand
+    font_size_subtitle: int = 14  # Font size for video subtitles
     logo_path: str = ""  # Path to logo image file
 
 
@@ -173,6 +173,6 @@ def get_thumbnail_config() -> ThumbnailConfig:
     return ThumbnailConfig(
         font_path=font_path,
         font_size_title=int(os.environ.get("THUMBNAIL_FONT_SIZE_TITLE", "72")),
-        font_size_subtitle=int(os.environ.get("THUMBNAIL_FONT_SIZE_SUBTITLE", "36")),
+        font_size_subtitle=int(os.environ.get("THUMBNAIL_FONT_SIZE_SUBTITLE", "14")),
         logo_path=os.environ.get("THUMBNAIL_LOGO_PATH", "images/logo.png"),
     )
