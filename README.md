@@ -23,7 +23,7 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 
 | Option | Description |
 |--------|-------------|
-| `-o, --output` | Output video file path (required) |
+| `-o, --output` | Output video file path (auto-generated from URL if not specified) |
 | `--platform` | Target platform: tiktok, instagram, reels (default: tiktok) |
 | `--duration` | Video duration in seconds (default: 30) |
 | `--scene-threshold` | Scene change sensitivity (default: 0.3) |
@@ -43,7 +43,7 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 With custom Chinese title and cover image:
 ```bash
 recut https://kickstarter.com/projects/xxx -o output.mp4 \
-  --chs-title "智能猫砂盆\nAI健康监测+全自动清洁" \
+  --chs-title "无狠活黑科技\n无狠活，不尬吹，只讲真东西" \
   --image "https://example.com/product.jpg"
 ```
 
@@ -55,19 +55,19 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 \
 
 ### Output Structure
 
-Running `recut -o sample/Keytron.mp4` generates:
+Running `recut https://kickstarter.com/projects/xxx/sample-project -o sample.mp4` generates:
 
 ```
-sample/
-├── Keytron.mp4          # Final video with Chinese dubbing and subtitles
-├── Keytron.md           # Chinese script with title, transcript, tags, and source URL
-└── Keytron/             # Intermediate files
-    ├── Keytron_script.md   # English transcript
-    ├── Keytron_dubbing.wav # TTS-generated Chinese audio
-    ├── Keytron_nodub.mp4   # Short video without dubbing
-    ├── Keytron.srt         # Subtitle file
-    ├── Keytron_raw.mp4     # Original downloaded video
-    └── Keytron_thumb.jpg   # Thumbnail with Chinese title
+output/
+├── sample.mp4          # Final video with Chinese dubbing and subtitles
+├── sample.md           # Chinese script with title, transcript, tags, and source URL
+└── sample/             # Intermediate files
+    ├── sample_script.md   # English transcript
+    ├── sample_dubbing.wav # TTS-generated Chinese audio
+    ├── sample_nodub.mp4   # Short video without dubbing
+    ├── sample.srt         # Subtitle file
+    ├── sample_raw.mp4     # Original downloaded video
+    └── sample_thumb.jpg   # Thumbnail with Chinese title
 ```
 
 ### Video Features
@@ -143,17 +143,21 @@ Get your API key from [MiniMax Platform](https://platform.minimaxi.com).
 Configure thumbnail generation with these environment variables:
 
 ```env
-# Chinese font for title display (required for thumbnails)
+# Chinese font for title display (auto-detected if not set)
 THUMBNAIL_FONT=/path/to/font.ttf
 
-# Optional: Logo to overlay throughout video (top-left corner)
-THUMBNAIL_LOGO_PATH=images/logo.png
+# Optional: Default fonts to search (comma-separated, auto-detection)
+THUMBNAIL_DEFAULT_FONTS=ZCOOLGaoDuanHei-Regular.ttf,NotoSansSC-Bold.ttf
 
-# Optional: Title font size (default: 72)
+# Optional: Font sizes
 THUMBNAIL_FONT_SIZE_TITLE=72
+THUMBNAIL_FONT_SIZE_SUBTITLE=36
+
+# Optional: Logo to overlay throughout video (top-left corner, 70% opacity)
+THUMBNAIL_LOGO_PATH=images/logo.png
 ```
 
-**Font Setup**: Download a Chinese font (e.g., 站酷高端黑 from zcool.com.cn) and set `THUMBNAIL_FONT` to its path. Without a font configured, thumbnails will not be generated.
+**Font Setup**: The tool auto-detects Chinese fonts (站酷高端黑, Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.
 
 **Logo**: When `THUMBNAIL_LOGO_PATH` is set, the logo image will be overlaid on the entire video (not on the thumbnail image itself, to avoid overlap).
 
