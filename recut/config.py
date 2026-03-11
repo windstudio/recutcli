@@ -44,10 +44,9 @@ def get_platform_config(platform: str, duration: int | None = None) -> PlatformC
 @dataclass
 class TTSConfig:
     """TTS configuration."""
-    engine: str = ""  # "edge" (default), "coqui", or "piper"
+    engine: str = ""  # "edge" (default), "coqui", or "minimax"
     voice: str = ""  # Edge TTS default: zh-CN-XiaoxiaoNeural (Chinese female)
     coqui_voice: str = ""  # Coqui default: tts_models/zh-CN/baker/tacotron2-DDC
-    piper_voice: str = ""  # Piper default: zh_CN-huayan-medium
     whisper_model: str = ""  # Whisper model size: small, medium, large
 
 
@@ -57,6 +56,14 @@ class APIConfig:
     llm_api_key: str = ""
     llm_api_url: str = ""
     llm_model: str = ""
+
+
+@dataclass
+class MinimaxConfig:
+    """MiniMax TTS API configuration."""
+    api_key: str = ""
+    api_url: str = ""
+    voice_id: str = ""
 
 
 def load_dotenv_config(env_path: Path | str | None = None) -> None:
@@ -80,13 +87,21 @@ def get_api_config() -> APIConfig:
     )
 
 
+def get_minimax_config() -> MinimaxConfig:
+    """Get MiniMax TTS configuration from environment."""
+    return MinimaxConfig(
+        api_key=os.environ.get("MINIMAX_API_KEY", ""),
+        api_url=os.environ.get("MINIMAX_API_URL", "https://api.minimaxi.com/v1/t2a_v2"),
+        voice_id=os.environ.get("MINIMAX_VOICE_ID", "moss_audio_ce44fc67-7ce3-11f0-8de5-96e35d26fb85"),
+    )
+
+
 def get_tts_config() -> TTSConfig:
     """Get TTS configuration from environment."""
     return TTSConfig(
         engine=os.environ.get("TTS_ENGINE", "edge"),
         voice=os.environ.get("TTS_VOICE", "zh-CN-XiaoxiaoNeural"),
         coqui_voice=os.environ.get("COQUI_VOICE", "tts_models/zh-CN/baker/tacotron2-DDC"),
-        piper_voice=os.environ.get("PIPER_VOICE", "zh_CN-huayan-medium"),
         whisper_model=os.environ.get("WHISPER_MODEL", "small"),
     )
 
