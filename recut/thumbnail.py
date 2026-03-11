@@ -511,12 +511,13 @@ def generate_slanted_poster(
         if main_img.mode != "RGBA":
             main_img = main_img.convert("RGBA")
 
-        # Scale image to fit canvas width while maintaining aspect ratio
-        # Image width should match canvas width for full coverage
-        if main_img.width != canvas_width:
-            scale_ratio = canvas_width / main_img.width
+        # Scale image to 1.2x canvas width for larger display area
+        # Then center horizontally before slant crop
+        target_width = int(canvas_width * 1.2)
+        if main_img.width != target_width:
+            scale_ratio = target_width / main_img.width
             new_height = int(main_img.height * scale_ratio)
-            main_img = main_img.resize((canvas_width, new_height), Image.Resampling.LANCZOS)
+            main_img = main_img.resize((target_width, new_height), Image.Resampling.LANCZOS)
 
         # Create gradient background using optimized helper function
         canvas = _create_gradient_image((canvas_width, canvas_height))
@@ -528,8 +529,8 @@ def generate_slanted_poster(
         main_img_masked = Image.new("RGBA", main_img.size, (0, 0, 0, 0))
         main_img_masked.paste(main_img, (0, 0), main_mask)
 
-        # Calculate paste position (画面上部20%位置)
-        paste_x = (canvas_width - main_img.width) // 2
+        # Calculate paste position (center horizontally, 20% from top)
+        paste_x = (canvas_width - main_img.width) // 2  # Center the wider image
         paste_y = int(canvas_height * 0.2)
 
         # Paste main image onto canvas
