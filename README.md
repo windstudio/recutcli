@@ -21,45 +21,74 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 
 ### Options
 
-- `--platform {tiktok,instagram,reels}` - Target platform (default: tiktok)
-- `--duration SECONDS` - Video duration (default: 30)
-- `--scene-threshold 0.3` - Scene change sensitivity (default: 0.3)
-- `--m3u8-url URL` - Direct m3u8 URL (bypass Kickstarter scraping)
-- `--tts-engine {edge,coqui,piper}` - TTS engine for Chinese dubbing (default: edge)
-- `--title TITLE` - English title from video page (optional, used for generating Chinese title)
+| Option | Description |
+|--------|-------------|
+| `-o, --output` | Output video file path (required) |
+| `--platform` | Target platform: tiktok, instagram, reels (default: tiktok) |
+| `--duration` | Video duration in seconds (default: 30) |
+| `--scene-threshold` | Scene change sensitivity (default: 0.3) |
+| `--video-url` | Direct video URL (mp4, avi, m3u8, etc.) - bypass Kickstarter scraping |
+| `--chs-title` | Chinese title - skip LLM title generation |
+| `--title` | English title from video page (optional, used for generating Chinese title) |
+| `--image` | Main image URL or path for thumbnail generation |
+| `--tts-engine` | TTS engine: edge, coqui, piper (default: edge) |
 
-### Output Files
+### Examples
+
+Basic usage:
+```bash
+recut https://kickstarter.com/projects/xxx -o output.mp4
+```
+
+With custom Chinese title and cover image:
+```bash
+recut https://kickstarter.com/projects/xxx -o output.mp4 \
+  --chs-title "智能猫砂盆\nAI健康监测+全自动清洁" \
+  --image "https://example.com/product.jpg"
+```
+
+With direct video URL:
+```bash
+recut https://kickstarter.com/projects/xxx -o output.mp4 \
+  --video-url "https://example.com/video.mp4"
+```
+
+### Output Structure
 
 Running `recut -o sample/Keytron.mp4` generates:
 
-| File | Description |
-|------|-------------|
-| `Keytron.mp4` | Clipped short video |
-| `Keytron_final.mp4` | Final video with Chinese dubbing, subtitles, thumbnail intro, and logo overlay |
-| `Keytron_raw.mp4` | Original downloaded video |
-| `Keytron_dubbing.wav` | TTS-generated Chinese audio |
-| `Keytron_chs.md` | Chinese script with title and tags |
-| `Keytron_script.md` | English transcript |
-| `Keytron.srt` | Subtitle file |
-| `Keytron_thumb.jpg` | Thumbnail image with Chinese title |
+```
+sample/
+├── Keytron.mp4          # Final video with Chinese dubbing and subtitles
+├── Keytron.md           # Chinese script with title, transcript, tags, and source URL
+└── Keytron/             # Intermediate files
+    ├── Keytron_script.md   # English transcript
+    ├── Keytron_dubbing.wav # TTS-generated Chinese audio
+    ├── Keytron_nodub.mp4   # Short video without dubbing
+    ├── Keytron.srt         # Subtitle file
+    ├── Keytron_raw.mp4     # Original downloaded video
+    └── Keytron_thumb.jpg   # Thumbnail with Chinese title
+```
 
 ### Video Features
 
 - **Thumbnail Intro**: The first 0.5 seconds show a thumbnail with the Chinese title before the video content
+- **Slanted Poster Thumbnail**: Thumbnails feature a slanted image mask, gradient background, and skewed title text
 - **Logo Overlay**: If configured, a logo is displayed in the top-left corner throughout the video
 - **Subtitles**: Chinese subtitles are delayed 0.5s to avoid showing during thumbnail display
 
 ### Bypassing Cloudflare
 
-If Kickstarter blocks direct requests (403 error), use a browser to get the m3u8 URL:
+If Kickstarter blocks direct requests (403 error), use a browser to get the video URL:
 
 1. Open the Kickstarter page in your browser
 2. Open developer tools (F12) → Network tab
-3. Filter for `m3u8` and copy the URL
-4. Run with `--m3u8-url`:
+3. Filter for `m3u8` or `mp4` and copy the URL
+4. Run with `--video-url`:
 
 ```bash
-recut https://kickstarter.com/projects/xxx -o output.mp4 --m3u8-url "https://v2.kickstarter.com/..."
+recut https://kickstarter.com/projects/xxx -o output.mp4 \
+  --video-url "https://v2.kickstarter.com/..."
 ```
 
 ## Configuration
