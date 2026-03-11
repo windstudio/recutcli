@@ -4,6 +4,7 @@
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import pytest
 
@@ -14,6 +15,7 @@ from recut.config import (
     APIConfig,
     get_api_config,
     get_tts_config,
+    get_minimax_config,
     load_dotenv_config,
 )
 
@@ -58,23 +60,20 @@ def test_tts_config_defaults():
     assert config.engine == ""
     assert config.voice == ""
     assert config.coqui_voice == ""
-    assert config.piper_voice == ""
     assert config.whisper_model == ""
 
 
 def test_tts_config_from_env(monkeypatch):
     """Test TTSConfig reads from environment variables."""
-    monkeypatch.setenv("TTS_ENGINE", "piper")
+    monkeypatch.setenv("TTS_ENGINE", "minimax")
     monkeypatch.setenv("TTS_VOICE", "zh-CN-YunxiNeural")
     monkeypatch.setenv("COQUI_VOICE", "tts_models/zh-CN/custom")
-    monkeypatch.setenv("PIPER_VOICE", "zh_CN-male-medium")
     monkeypatch.setenv("WHISPER_MODEL", "medium")
 
     config = get_tts_config()
-    assert config.engine == "piper"
+    assert config.engine == "minimax"
     assert config.voice == "zh-CN-YunxiNeural"
     assert config.coqui_voice == "tts_models/zh-CN/custom"
-    assert config.piper_voice == "zh_CN-male-medium"
     assert config.whisper_model == "medium"
 
 
@@ -141,3 +140,28 @@ def test_api_config_default_values(monkeypatch):
     assert config.llm_api_key == ""
     assert config.llm_api_url == "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"
     assert config.llm_model == "glm-5"
+
+
+def test_get_minimax_config_defaults():
+    """Test get_minimax_config returns default values."""
+    with patch.dict(os.environ, {}, clear=True):
+        config = get_minimax_config()
+        assert config.api_key == ""
+        assert config.api_url == "https://api.minimaxi.com/v1/t2a_v2"
+        assert config.voice_id == "moss_audio_ce44fc67-7ce3-11f0-8de5-96e35d26fb85"
+
+
+def test_get_minimax_config_from_env():
+    """Test get_minimax_config reads from environment."""
+    from recut.config import get_minimax_config
+
+    env = {
+        "MINIMAX_API_KEY": "test-key",
+        "MINIMAX_API_URL": "https://custom.api.com",
+        "MINIMAX_VOICE_ID": "custom-voice",
+    }
+    with patch.dict(os.environ, env, clear=True):
+        config = get_minimax_config()
+        assert config.api_key == "test-key"
+        assert config.api_url == "https://custom.api.com"
+        assert config.voice_id == "custom-voice"

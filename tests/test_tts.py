@@ -44,24 +44,6 @@ def test_generate_audio_calls_coqui_when_specified():
             mock_coqui.assert_called_once_with("测试文本", output_path, "test-coqui-voice")
 
 
-def test_generate_audio_calls_piper_when_specified():
-    """Test that generate_audio calls Piper TTS when engine='piper'."""
-    from recut.tts import generate_audio
-
-    with TemporaryDirectory() as tmpdir:
-        output_path = Path(tmpdir) / "output.wav"
-
-        with patch("recut.tts._generate_piper_audio") as mock_piper, \
-             patch("recut.tts.get_tts_config") as mock_config:
-            mock_config.return_value = MagicMock(engine="piper", piper_voice="test-piper-voice")
-            mock_piper.return_value = output_path
-
-            result = generate_audio("测试文本", output_path, engine="piper")
-
-            assert result == output_path
-            mock_piper.assert_called_once_with("测试文本", output_path, "test-piper-voice")
-
-
 def test_generate_audio_uses_custom_voice():
     """Test that generate_audio uses custom voice when provided."""
     from recut.tts import generate_audio
@@ -111,38 +93,82 @@ def test_generate_audio_coqui_raises_on_error():
                 generate_audio("测试", output_path, engine="coqui")
 
 
-def test_generate_audio_piper_raises_on_error():
-    """Test that generate_audio propagates Piper TTS error."""
+def test_generate_audio_calls_minimax_when_specified():
+    """Test that generate_audio calls MiniMax TTS when engine='minimax'."""
     from recut.tts import generate_audio
 
     with TemporaryDirectory() as tmpdir:
         output_path = Path(tmpdir) / "output.wav"
 
-        with patch("recut.tts._generate_piper_audio") as mock_piper, \
+        with patch("recut.tts._generate_minimax_audio") as mock_minimax, \
              patch("recut.tts.get_tts_config") as mock_config:
-            mock_config.return_value = MagicMock(engine="piper", piper_voice="test-voice")
-            mock_piper.side_effect = RuntimeError("Model not found")
+            mock_config.return_value = MagicMock(engine="minimax")
+            mock_minimax.return_value = output_path
 
-            with pytest.raises(RuntimeError, match="Model not found"):
-                generate_audio("测试", output_path, engine="piper")
+            result = generate_audio("测试文本", output_path, engine="minimax")
+
+            assert result == output_path
+            mock_minimax.assert_called_once_with("测试文本", output_path, None)
 
 
-def test_ensure_piper_model_files_downloads_missing_model():
-    """Test that _ensure_piper_model_files downloads model if missing."""
-    from recut.tts import _ensure_piper_model_files
+def test_generate_audio_minimax_raises_on_error():
+    """Test that generate_audio propagates MiniMax TTS error."""
+    from recut.tts import generate_audio
 
     with TemporaryDirectory() as tmpdir:
-        import recut.tts
-        original_dir = recut.tts.PIPER_MODELS_DIR
-        recut.tts.PIPER_MODELS_DIR = Path(tmpdir)
+        output_path = Path(tmpdir) / "output.wav"
 
-        try:
-            with patch("urllib.request.urlretrieve") as mock_download:
-                onnx_path, json_path = _ensure_piper_model_files("zh_CN-huayan-medium")
+        with patch("recut.tts._generate_minimax_audio") as mock_minimax, \
+             patch("recut.tts.get_tts_config") as mock_config:
+            mock_config.return_value = MagicMock(engine="minimax")
+            mock_minimax.side_effect = RuntimeError("API error")
 
-                # Should download both onnx and json files
-                assert mock_download.call_count == 2
-                assert onnx_path.name == "zh_CN-huayan-medium.onnx"
-                assert json_path.name == "zh_CN-huayan-medium.onnx.json"
-        finally:
-            recut.tts.PIPER_MODELS_DIR = original_dir
+            with pytest.raises(RuntimeError, match="API error"):
+                generate_audio("测试", output_path, engine="minimax")
+
+
+def test_generate_minimax_audio_requires_api_key():
+    """Test that MiniMax TTS raises error when API key is not set."""
+    from recut.tts import _generate_minimax_audio
+
+    with TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "output.wav"
+
+        with patch("recut.config.get_minimax_config") as mock_config:
+            mock_config.return_value = MagicMock(api_key="", api_url="https://test.com", voice_id="test-voice")
+
+            with pytest.raises(RuntimeError, match="MINIMAX_API_KEY not set"):
+                _generate_minimax_audio("测试", output_path)
+
+
+def test_generate_minimax_audio_success():
+    """Test successful MiniMax TTS audio generation."""
+    from recut.tts import _generate_minimax_audio
+
+    with TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "output.wav"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "data": {"audio": "52494646", "status": 2},  # "RIFF" in hex
+            "base_resp": {"status_code": 0, "status_msg": "success"}
+        }
+
+        mock_requests = MagicMock()
+        mock_requests.post.return_value = mock_response
+        mock_requests.RequestException = Exception
+
+        with patch.dict("sys.modules", {"requests": mock_requests}), \
+             patch("recut.config.get_minimax_config") as mock_config:
+            mock_config.return_value = MagicMock(
+                api_key="test-key",
+                api_url="https://test.com",
+                voice_id="test-voice"
+            )
+
+            result = _generate_minimax_audio("测试", output_path)
+
+            assert result == output_path
+            assert output_path.exists()
+            assert output_path.read_bytes() == bytes.fromhex("52494646")
