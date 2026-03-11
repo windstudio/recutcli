@@ -26,18 +26,28 @@ def format_timestamp(seconds: float) -> str:
 
 
 def cut_fragment(video_path: Path, fragment: Scene, output_path: Path) -> Path:
-    """Cut a single fragment from video."""
+    """Cut a single fragment from video with proper re-encoding.
+
+    Re-encoding ensures accurate cuts at non-keyframe positions.
+    """
     _run_ffmpeg([
-        get_ffmpeg_path(), "-i", str(video_path),
-        "-ss", format_timestamp(fragment.start),
-        "-to", format_timestamp(fragment.end),
-        "-c", "copy", "-y", str(output_path)
+        get_ffmpeg_path(),
+        "-ss", format_timestamp(fragment.start),  # Input seeking (faster)
+        "-i", str(video_path),
+        "-t", format_timestamp(fragment.end - fragment.start),  # Duration instead of -to
+        "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+        "-c:a", "aac", "-b:a", "128k",
+        "-r", "30",  # Force consistent 30fps
+        "-y", str(output_path)
     ])
     return output_path
 
 
 def concatenate_fragments(fragment_paths: list[Path], output_path: Path) -> Path:
-    """Concatenate video fragments."""
+    """Concatenate video fragments with consistent encoding.
+
+    Re-encoding ensures all fragments have matching parameters.
+    """
     with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
         for path in fragment_paths:
             f.write(f"file '{path}'\n")
@@ -46,27 +56,15 @@ def concatenate_fragments(fragment_paths: list[Path], output_path: Path) -> Path
     try:
         _run_ffmpeg([
             get_ffmpeg_path(), "-f", "concat", "-safe", "0",
-            "-i", list_file, "-c", "copy", "-y", str(output_path)
+            "-i", list_file,
+            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+            "-c:a", "aac", "-b:a", "128k",
+            "-r", "30",  # Consistent 30fps
+            "-y", str(output_path)
         ])
     finally:
         Path(list_file).unlink()
 
-    return output_path
-
-
-def transcode_for_platform(video_path: Path, output_path: Path, config: PlatformConfig) -> Path:
-    """Transcode video for social media platform."""
-    scale_filter = f"scale={config.width}:{config.height}:force_original_aspect_ratio=decrease"
-    pad_filter = f"pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2"
-
-    _run_ffmpeg([
-        get_ffmpeg_path(), "-i", str(video_path),
-        "-vf", f"{scale_filter},{pad_filter}",
-        "-r", "30",  # Maintain 30fps to preserve video timing
-        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-        "-c:a", "aac", "-b:a", "128k",
-        "-movflags", "+faststart", "-y", str(output_path)
-    ])
     return output_path
 
 
@@ -75,7 +73,7 @@ def create_short(video_path: Path, fragments: list[Scene], output_path: Path, co
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
 
-        # Cut and concatenate fragments
+        # Cut fragments (now with re-encoding)
         fragment_paths = []
         for i, frag in enumerate(fragments):
             frag_path = tmpdir / f"fragment_{i}.mp4"
@@ -85,8 +83,17 @@ def create_short(video_path: Path, fragments: list[Scene], output_path: Path, co
         concat_path = tmpdir / "concatenated.mp4"
         concatenate_fragments(fragment_paths, concat_path)
 
-        # Transcode for platform
-        transcode_for_platform(concat_path, output_path, config)
+        # Only resize/pad for platform, no re-encoding needed for quality
+        scale_filter = f"scale={config.width}:{config.height}:force_original_aspect_ratio=decrease"
+        pad_filter = f"pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2"
+
+        _run_ffmpeg([
+            get_ffmpeg_path(), "-i", str(concat_path),
+            "-vf", f"{scale_filter},{pad_filter}",
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "copy",  # Audio already encoded
+            "-movflags", "+faststart", "-y", str(output_path)
+        ])
 
     return output_path
 
