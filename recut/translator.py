@@ -120,7 +120,8 @@ def translate_and_generate_metadata(
     base_url: str,
     model: str,
     duration: int = 30,
-    english_title: str | None = None
+    english_title: str | None = None,
+    chs_title: str | None = None
 ) -> dict:
     """Translate English text and generate Chinese metadata (title, transcript, tags).
 
@@ -131,6 +132,7 @@ def translate_and_generate_metadata(
         model: Model name
         duration: Target video duration in seconds (default 30)
         english_title: Optional English title to translate/refine
+        chs_title: Optional Chinese title to use directly (skips title generation)
 
     Returns:
         dict with keys: title (str), transcript (str), tags (list[str])
@@ -157,7 +159,13 @@ def translate_and_generate_metadata(
         content = response.choices[0].message.content
         if not content:
             raise RuntimeError("Metadata generation failed: empty response")
-        return parse_metadata_response(content)
+        result = parse_metadata_response(content)
+
+        # Override title if chs_title is provided
+        if chs_title:
+            result["title"] = chs_title
+
+        return result
     except Exception as e:
         raise RuntimeError(f"Metadata generation failed: {e}")
 
