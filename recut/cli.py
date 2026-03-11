@@ -53,7 +53,7 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 @click.option("--platform", type=click.Choice(list(PLATFORMS.keys())), default="tiktok", help="Target platform")
 @click.option("--scene-threshold", type=float, default=0.3, help="Scene change detection threshold")
 @click.option("--video-url", help="Direct video URL (mp4, avi, m3u8, etc.)")
-@click.option("--tts-engine", type=click.Choice(["edge", "coqui", "piper"]), default=None, help="TTS engine")
+@click.option("--tts-engine", type=click.Choice(["edge", "coqui", "minimax"]), default=None, help="TTS engine")
 @click.option("--duration", type=int, default=None, help="Video duration in seconds (default: 30)")
 @click.option("--title", help="English title from video page (optional)")
 @click.option("--chs-title", help="Chinese title (skip LLM title generation)")
