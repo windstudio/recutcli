@@ -1,7 +1,6 @@
-"""Text-to-speech using Edge TTS (default), Coqui TTS, or Piper TTS."""
+"""Text-to-speech using Edge TTS (default), Coqui TTS, or MiniMax TTS API."""
 
 import asyncio
-import os
 import subprocess
 import wave
 from pathlib import Path
@@ -33,51 +32,10 @@ def get_audio_duration(audio_path: Path) -> float:
     except Exception as e:
         raise RuntimeError(f"Failed to read audio duration: {e}")
 
-# Default directory for Piper models
-PIPER_MODELS_DIR = Path(os.environ.get("PIPER_MODELS_DIR", "C:/piper_models"))
-
-# Hugging Face URLs for downloading Piper models
-PIPER_VOICE_URLS = {
-    "zh_CN-huayan-medium": "https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx",
-}
-
 
 def _ensure_output_dir(output_path: Path) -> None:
     """Ensure output directory exists."""
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
-
-def _ensure_piper_model_files(voice: str) -> tuple[Path, Path]:
-    """Ensure Piper model files exist, download if necessary."""
-    onnx_path = PIPER_MODELS_DIR / f"{voice}.onnx"
-    json_path = PIPER_MODELS_DIR / f"{voice}.onnx.json"
-
-    if onnx_path.exists() and json_path.exists():
-        return onnx_path, json_path
-
-    if voice in PIPER_VOICE_URLS:
-        import urllib.request
-
-        PIPER_MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        onnx_url = PIPER_VOICE_URLS[voice]
-        print(f"Downloading voice model: {voice}...")
-        urllib.request.urlretrieve(onnx_url, onnx_path)
-        urllib.request.urlretrieve(f"{onnx_url}.json", json_path)
-        print(f"Downloaded model to: {PIPER_MODELS_DIR}")
-        return onnx_path, json_path
-
-    # Try as absolute path
-    voice_path = Path(voice)
-    if voice_path.suffix == ".onnx":
-        json_path = voice_path.with_suffix(".onnx.json")
-        if voice_path.exists() and json_path.exists():
-            return voice_path, json_path
-
-    raise RuntimeError(
-        f"Voice model not found: {voice}. "
-        f"Available for download: {list(PIPER_VOICE_URLS.keys())}. "
-        f"Or provide path to existing .onnx file."
-    )
 
 
 def _generate_edge_audio(text: str, output_path: Path, voice: str) -> Path:
@@ -124,39 +82,72 @@ def _generate_coqui_audio(text: str, output_path: Path, voice: str) -> Path:
         raise RuntimeError(f"Coqui TTS generation failed: {e}")
 
 
-def _generate_piper_audio(text: str, output_path: Path, voice: str) -> Path:
-    """Generate audio using Piper TTS."""
-    from piper import PiperVoice
+def _generate_minimax_audio(text: str, output_path: Path, voice_id: str | None = None) -> Path:
+    """Generate audio using MiniMax TTS API.
 
-    output_path = Path(output_path)
-    _ensure_output_dir(output_path)
+    Args:
+        text: Chinese text to synthesize
+        output_path: Output WAV file path
+        voice_id: MiniMax voice ID (optional, uses config default if not provided)
+
+    Returns:
+        Path to generated audio file
+
+    Raises:
+        RuntimeError: If API call fails or configuration is missing
+    """
+    import requests
+    from recut.config import get_minimax_config
+
+    config = get_minimax_config()
+    if not config.api_key:
+        raise RuntimeError("MINIMAX_API_KEY not set. Please set it in .env file.")
+
+    voice = voice_id or config.voice_id
 
     try:
-        onnx_path, json_path = _ensure_piper_model_files(voice)
-        piper_voice = PiperVoice.load(str(onnx_path), config_path=str(json_path))
+        response = requests.post(
+            config.api_url,
+            headers={
+                "Authorization": f"Bearer {config.api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "speech-2.8-hd",
+                "text": text,
+                "stream": False,
+                "voice_setting": {
+                    "voice_id": voice,
+                    "speed": 1.0,
+                },
+                "audio_setting": {
+                    "sample_rate": 22050,
+                    "format": "wav",
+                    "channel": 1,
+                },
+            },
+            timeout=60,
+        )
 
-        audio_chunks = []
-        sample_rate, sample_width, channels = 22050, 2, 1
+        if response.status_code != 200:
+            raise RuntimeError(f"MiniMax API HTTP error: {response.status_code} - {response.text}")
 
-        for chunk in piper_voice.synthesize(text):
-            audio_chunks.append(chunk.audio_int16_bytes)
-            if hasattr(chunk, 'sample_rate'):
-                sample_rate = chunk.sample_rate
-            if hasattr(chunk, 'sample_width'):
-                sample_width = chunk.sample_width
-            if hasattr(chunk, 'sample_channels'):
-                channels = chunk.sample_channels
+        data = response.json()
+        base_resp = data.get("base_resp", {})
+        if base_resp.get("status_code") != 0:
+            raise RuntimeError(f"MiniMax API error: {base_resp.get('status_msg', 'Unknown error')}")
 
-        with wave.open(str(output_path), 'wb') as wav_file:
-            wav_file.setnchannels(channels)
-            wav_file.setsampwidth(sample_width)
-            wav_file.setframerate(sample_rate)
-            for chunk_bytes in audio_chunks:
-                wav_file.writeframes(chunk_bytes)
+        # Decode hex audio to binary
+        audio_hex = data["data"]["audio"]
+        audio_bytes = bytes.fromhex(audio_hex)
+
+        output_path = Path(output_path)
+        _ensure_output_dir(output_path)
+        output_path.write_bytes(audio_bytes)
 
         return output_path
-    except Exception as e:
-        raise RuntimeError(f"Piper TTS generation failed: {e}")
+    except requests.RequestException as e:
+        raise RuntimeError(f"MiniMax API request failed: {e}")
 
 
 def generate_audio(
@@ -170,7 +161,7 @@ def generate_audio(
     Args:
         text: Chinese text to synthesize
         output_path: Output WAV file path
-        engine: TTS engine ("edge", "coqui", or "piper"). Default: edge
+        engine: TTS engine ("edge", "coqui", or "minimax"). Default: edge
         voice: Voice model name. Default: engine-specific default
 
     Returns:
@@ -179,9 +170,8 @@ def generate_audio(
     config = get_tts_config()
     engine = engine or config.engine
 
-    if engine == "piper":
-        voice = voice or config.piper_voice
-        return _generate_piper_audio(text, output_path, voice)
+    if engine == "minimax":
+        return _generate_minimax_audio(text, output_path, voice)
     elif engine == "coqui":
         voice = voice or config.coqui_voice
         return _generate_coqui_audio(text, output_path, voice)
