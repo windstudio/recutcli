@@ -132,7 +132,7 @@ def translate_and_generate_metadata(
         model: Model name
         duration: Target video duration in seconds (default 30)
         english_title: Optional English title to translate/refine
-        chs_title: Optional Chinese title to use directly (skips title generation)
+        chs_title: Optional Chinese title to override LLM-generated title
 
     Returns:
         dict with keys: title (str), transcript (str), tags (list[str])
@@ -161,8 +161,8 @@ def translate_and_generate_metadata(
             raise RuntimeError("Metadata generation failed: empty response")
         result = parse_metadata_response(content)
 
-        # Override title if chs_title is provided
-        if chs_title:
+        # Override title if chs_title is provided (exclude whitespace-only strings)
+        if chs_title and chs_title.strip():
             result["title"] = chs_title
 
         return result
