@@ -210,11 +210,16 @@ THUMBNAIL_FONT_SIZE_SUBTITLE=14
 
 # Optional: Logo to overlay throughout video (top-left corner, 70% opacity)
 THUMBNAIL_LOGO_PATH=material/logo.png
+
+# Optional: Outro video to append at the end
+THUMBNAIL_OUTRO_PATH=material/outro.mp4
 ```
 
 **Font Setup**: The tool auto-detects Chinese fonts (站酷高端黑, Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.
 
 **Logo**: When `THUMBNAIL_LOGO_PATH` is set, the logo image will be overlaid on the entire video (not on the thumbnail image itself, to avoid overlap).
+
+**Outro Video**: When `THUMBNAIL_OUTRO_PATH` is set and the file exists, the outro video will be appended to the final video. The outro keeps its original audio. No subtitles or logo overlay are applied to the outro.
 
 ## License
 
