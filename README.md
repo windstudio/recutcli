@@ -169,6 +169,16 @@ The tool supports any OpenAI-compatible API:
 - **coqui** - Open-source TTS (requires Python 3.9-3.11)
 - **minimax** - MiniMax cloud TTS API, high quality Chinese voice
 
+Each TTS engine has a different speaking speed. The tool automatically adjusts the Chinese script length to match the target duration:
+
+| Engine | Character Rate | Target chars for 30s video |
+|--------|---------------|----------------------------|
+| edge | 3.5 chars/sec | ~105 chars |
+| minimax | 4.5 chars/sec | ~135 chars |
+| coqui | 3.5 chars/sec | ~105 chars |
+
+Additionally, if the dubbing duration is shorter than the target, the tool automatically selects more video fragments to ensure the final video meets the target duration.
+
 ### MiniMax Configuration
 
 To use MiniMax TTS, set these environment variables:
@@ -180,6 +190,8 @@ MINIMAX_VOICE_ID=moss_audio_ce44fc67-7ce3-11f0-8de5-96e35d26fb85
 ```
 
 Get your API key from [MiniMax Platform](https://platform.minimaxi.com).
+
+**Note**: MiniMax TTS uses volume level 2.0 (default is 1.0) for better audio output.
 
 ### Thumbnail Configuration
 
