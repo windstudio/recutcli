@@ -1,8 +1,9 @@
 """Scene detection and fragment scoring."""
 
+import json
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 
 from recut.downloader import get_ffmpeg_path
@@ -171,3 +172,50 @@ def select_top_fragments(fragments: list[Scene], target_duration: float) -> list
 
     # Sort by start time to maintain original order
     return sorted(selected, key=lambda f: f.start)
+
+
+def save_scenes_to_json(scenes: list[Scene], path: Path) -> None:
+    """Save scenes to JSON file.
+
+    Args:
+        scenes: List of Scene objects
+        path: Output file path
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "fragments": [
+            {"start": s.start, "end": s.end, "score_change_count": s.score_change_count}
+            for s in scenes
+        ]
+    }
+    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def load_scenes_from_json(path: Path) -> list[Scene]:
+    """Load scenes from JSON file.
+
+    Args:
+        path: Input file path
+
+    Returns:
+        List of Scene objects
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If file format is invalid
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Scenes file not found: {path}")
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if "fragments" not in data:
+        raise ValueError(f"Invalid scenes file format: missing 'fragments' key")
+
+    return [
+        Scene(
+            start=f["start"],
+            end=f["end"],
+            score_change_count=f.get("score_change_count", 0)
+        )
+        for f in data["fragments"]
+    ]

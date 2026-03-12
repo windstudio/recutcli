@@ -215,3 +215,83 @@ def save_chinese_script(output_path: str | Path, metadata: dict, source_url: str
         content += f"\n# Source URL\n{source_url}\n"
 
     path.write_text(content, encoding="utf-8")
+
+
+def parse_chinese_script(path: Path) -> dict:
+    """Parse user-edited Chinese script markdown file.
+
+    Args:
+        path: Path to the markdown file
+
+    Returns:
+        dict with keys: title, transcript, tags, source_url (optional)
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: If required sections are missing
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Chinese script file not found: {path}")
+
+    content = path.read_text(encoding="utf-8")
+    result: dict = {"title": "", "transcript": "", "tags": [], "source_url": None}
+
+    # Parse sections by headers
+    lines = content.split("\n")
+    current_section = None
+    section_content: list[str] = []
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("# "):
+            # Save previous section content
+            if current_section and section_content:
+                _set_section_content(result, current_section, section_content)
+            # Start new section
+            current_section = stripped[2:].lower()
+            section_content = []
+        elif current_section:
+            section_content.append(line)
+
+    # Save last section
+    if current_section and section_content:
+        _set_section_content(result, current_section, section_content)
+
+    # Validate required fields
+    if not result["title"]:
+        raise ValueError("Chinese script missing 'Title' section")
+    if not result["transcript"]:
+        raise ValueError("Chinese script missing 'Transcript' section")
+
+    return result
+
+
+def _set_section_content(result: dict, section: str, content: list[str]) -> None:
+    """Set section content in result dict.
+
+    Args:
+        result: Result dictionary to update
+        section: Section name (lowercase)
+        content: List of content lines
+    """
+    text = "\n".join(content).strip()
+
+    if section == "title":
+        result["title"] = text
+    elif section == "transcript":
+        result["transcript"] = text
+    elif section == "tags":
+        # Parse tags: extract from #tag format or comma-separated
+        tags = []
+        for part in text.split():
+            if part.startswith("#"):
+                tags.append(part[1:])  # Remove # prefix
+            else:
+                # Handle comma-separated format
+                for tag in part.split(","):
+                    tag = tag.strip()
+                    if tag:
+                        tags.append(tag)
+        result["tags"] = tags
+    elif section in ("source url", "source_url", "source"):
+        result["source_url"] = text if text else None
