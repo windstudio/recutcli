@@ -135,6 +135,7 @@ def main(
         title=title,
         chs_title=chs_title,
         image=image,
+        tts_engine=tts_engine,
     )
     metadata_path = checkpoint_dir / f"{output_stem}_metadata.json"
     save_metadata(metadata, metadata_path)
@@ -331,6 +332,10 @@ def handle_resume(resume_path: str, tts_engine: str | None = None) -> None:
     duration = metadata.get("duration", 30)
     config = get_platform_config(platform, duration=duration)
     image = metadata.get("image")
+    # Use command-line tts_engine if provided, otherwise restore from metadata
+    saved_tts_engine = metadata.get("tts_engine")
+    if tts_engine is None and saved_tts_engine:
+        tts_engine = saved_tts_engine
 
     # Setup output path
     output_path = checkpoint_dir.parent / f"{name}.mp4"

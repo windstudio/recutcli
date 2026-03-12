@@ -142,6 +142,7 @@ def create_metadata(
     title: str | None = None,
     chs_title: str | None = None,
     image: str | None = None,
+    tts_engine: str | None = None,
 ) -> dict:
     """Create metadata dictionary.
 
@@ -153,6 +154,7 @@ def create_metadata(
         title: Optional English title
         chs_title: Optional Chinese title
         image: Optional image URL/path
+        tts_engine: Optional TTS engine name
 
     Returns:
         Metadata dictionary
@@ -170,4 +172,6 @@ def create_metadata(
         metadata["chs_title"] = chs_title
     if image:
         metadata["image"] = image
+    if tts_engine:
+        metadata["tts_engine"] = tts_engine
     return metadata
