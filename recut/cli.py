@@ -14,7 +14,7 @@ from recut import __version__
 from recut.analyzer import detect_scenes, select_top_fragments, Scene, get_video_duration, save_scenes_to_json, load_scenes_from_json
 from recut.config import get_platform_config, PLATFORMS, load_dotenv_config, get_api_config, get_tts_config, get_thumbnail_config
 from recut.downloader import check_ffmpeg, download_and_merge_m3u8, download_video, FFMPEG_INSTALL_MSG
-from recut.editor import create_short, extract_audio_for_mixing, merge_video_audio_subtitle
+from recut.editor import create_short, extract_audio_for_mixing, merge_video_audio_subtitle, append_outro
 from recut.scraper import fetch_kickstarter_page, extract_m3u8_url
 from recut.transcriber import extract_audio, transcribe_audio, save_transcript
 from recut.translator import translate_and_generate_metadata, save_chinese_script, parse_chinese_script
@@ -502,14 +502,41 @@ def _run_remaining_phases(
         thumbnail_config = get_thumbnail_config()
         logo_path = Path(thumbnail_config.logo_path) if thumbnail_config.logo_path else None
 
+        # First, merge to temp file (in case we need to append outro)
+        temp_output = checkpoint_dir / f"{output_stem}_temp.mp4"
+
         try:
             merge_video_audio_subtitle(
-                nodub_video_path, original_audio_path, dubbing_path, srt_path, output_path,
+                nodub_video_path, original_audio_path, dubbing_path, srt_path, temp_output,
                 thumbnail_path=thumbnail_path if thumbnail_path.exists() else None,
                 logo_path=logo_path
             )
         except Exception as e:
             _exit_on_error("merging video", e)
+
+        # Check for outro video
+        outro_path = Path(thumbnail_config.outro_path) if thumbnail_config.outro_path else None
+        if outro_path and outro_path.exists():
+            click.echo(f"Appending outro video: {outro_path}")
+            try:
+                append_outro(temp_output, outro_path, output_path)
+                # Clean up temp file, ignore errors
+                try:
+                    temp_output.unlink()
+                except Exception:
+                    pass
+            except Exception as e:
+                click.echo(f"Warning: Failed to append outro: {e}. Using main video only.")
+                try:
+                    temp_output.rename(output_path)
+                except Exception as rename_err:
+                    click.echo(f"Warning: Failed to rename temp file: {rename_err}")
+        else:
+            # No outro, just rename temp to final
+            try:
+                temp_output.rename(output_path)
+            except Exception as e:
+                click.echo(f"Warning: Failed to rename temp file: {e}")
 
     click.echo(f"Done! Output saved to: {output_path}")
 
