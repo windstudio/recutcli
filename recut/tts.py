@@ -119,6 +119,7 @@ def _generate_minimax_audio(text: str, output_path: Path, voice_id: str | None =
                 "voice_setting": {
                     "voice_id": voice,
                     "speed": 1.0,
+                    "vol": 2.0,
                 },
                 "audio_setting": {
                     "sample_rate": 22050,
