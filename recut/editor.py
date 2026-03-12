@@ -327,21 +327,19 @@ def append_outro(video_path: Path, outro_path: Path, output_path: Path) -> Path:
     outro_path = Path(outro_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
-        f.write(f"file '{video_path.resolve()}'\n")
-        f.write(f"file '{outro_path.resolve()}'\n")
-        list_file = f.name
-
-    try:
-        _run_ffmpeg([
-            get_ffmpeg_path(), "-f", "concat", "-safe", "0",
-            "-i", list_file,
-            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-            "-c:a", "aac", "-b:a", "128k",
-            "-movflags", "+faststart",
-            "-y", str(output_path)
-        ])
-    finally:
-        Path(list_file).unlink()
+    # Use FFmpeg with two inputs and concat filter
+    # Setsar is needed to normalize SAR (Sample Aspect Ratio) between videos
+    _run_ffmpeg([
+        get_ffmpeg_path(),
+        "-i", str(video_path),
+        "-i", str(outro_path),
+        "-filter_complex",
+        "[0:v]format=yuv420p,setsar=1[v0];[1:v]format=yuv420p,setsar=1[v1];[v0][0:a][v1][1:a]concat=n=2:v=1:a=1[outv][outa]",
+        "-map", "[outv]", "-map", "[outa]",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+        "-c:a", "aac", "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-y", str(output_path)
+    ])
 
     return output_path
