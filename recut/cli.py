@@ -433,10 +433,9 @@ def _run_remaining_phases(
             except Exception as e:
                 _exit_on_error("generating subtitles", e)
 
-            # Align subtitles with offset if thumbnail was generated
+            # Align subtitles with offset if title exists (thumbnail will be generated)
             click.echo("Aligning subtitles...")
-            thumbnail_path = checkpoint_dir / f"{output_stem}_thumb.jpg"
-            subtitle_offset = 0.5 if thumbnail_path.exists() else 0.0
+            subtitle_offset = 0.5 if title else 0.0
             try:
                 align_subtitle(raw_srt_path, chinese_script, srt_path, time_offset=subtitle_offset)
             except Exception as e:
