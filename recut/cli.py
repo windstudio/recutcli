@@ -232,7 +232,8 @@ def main(
                 model=api_config.llm_model,
                 duration=config.max_duration,
                 english_title=title,
-                chs_title=chs_title
+                chs_title=chs_title,
+                tts_engine=tts_engine
             )
         except Exception as e:
             _exit_on_error("generating metadata", e)

@@ -19,10 +19,21 @@ def _get_season(month: int) -> str:
         return "冬季"
 
 
+# TTS engine character rate coefficients (chars per second)
+# Based on testing: edge is baseline at 3.5 chars/sec
+# minimax speaks faster, needs more characters for same duration
+TTS_CHAR_RATES = {
+    "edge": 3.5,
+    "minimax": 4.4,  # ~25% faster than edge
+    "coqui": 3.5,    # similar to edge
+}
+
+
 def get_metadata_generation_prompt(
     duration: int,
     english_title: str | None,
-    chs_title: str | None = None
+    chs_title: str | None = None,
+    tts_engine: str | None = None
 ) -> str:
     """Generate prompt for metadata generation.
 
@@ -30,13 +41,14 @@ def get_metadata_generation_prompt(
         duration: Target video duration in seconds
         english_title: Optional English title to translate/refine
         chs_title: Optional Chinese title to use directly
+        tts_engine: TTS engine name for character rate adjustment
 
     Returns:
         Prompt string for LLM
     """
-    # Target: ~3.5 Chinese characters per second for natural speech
-    # Allow ±5% tolerance for better precision
-    target_chars = int(duration * 3.5)
+    # Get character rate for the TTS engine
+    char_rate = TTS_CHAR_RATES.get(tts_engine, TTS_CHAR_RATES["edge"])
+    target_chars = int(duration * char_rate)
     tolerance = max(3, int(target_chars * 0.05))  # At least 3 chars tolerance
     min_chars = target_chars - tolerance
     max_chars = target_chars + tolerance
@@ -129,7 +141,8 @@ def translate_and_generate_metadata(
     model: str,
     duration: int = 30,
     english_title: str | None = None,
-    chs_title: str | None = None
+    chs_title: str | None = None,
+    tts_engine: str | None = None
 ) -> dict:
     """Translate English text and generate Chinese metadata (title, transcript, tags).
 
@@ -141,6 +154,7 @@ def translate_and_generate_metadata(
         duration: Target video duration in seconds (default 30)
         english_title: Optional English title to translate/refine
         chs_title: Optional Chinese title to override LLM-generated title
+        tts_engine: TTS engine name for character rate adjustment
 
     Returns:
         dict with keys: title (str), transcript (str), tags (list[str])
@@ -154,7 +168,7 @@ def translate_and_generate_metadata(
     )
 
     try:
-        prompt = get_metadata_generation_prompt(duration, english_title, chs_title)
+        prompt = get_metadata_generation_prompt(duration, english_title, chs_title, tts_engine)
         response = client.chat.completions.create(
             model=model,
             messages=[
