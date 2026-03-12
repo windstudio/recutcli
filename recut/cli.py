@@ -528,12 +528,16 @@ def _run_remaining_phases(
             except Exception as e:
                 click.echo(f"Warning: Failed to append outro: {e}. Using main video only.")
                 try:
+                    if output_path.exists():
+                        output_path.unlink()
                     temp_output.rename(output_path)
                 except Exception as rename_err:
                     click.echo(f"Warning: Failed to rename temp file: {rename_err}")
         else:
             # No outro, just rename temp to final
             try:
+                if output_path.exists():
+                    output_path.unlink()
                 temp_output.rename(output_path)
             except Exception as e:
                 click.echo(f"Warning: Failed to rename temp file: {e}")
