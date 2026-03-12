@@ -24,7 +24,7 @@ def _get_season(month: int) -> str:
 # minimax speaks faster, needs more characters for same duration
 TTS_CHAR_RATES = {
     "edge": 3.5,
-    "minimax": 4.4,  # ~25% faster than edge
+    "minimax": 5.0,  # ~43% faster than edge
     "coqui": 3.5,    # similar to edge
 }
 
