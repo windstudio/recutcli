@@ -113,6 +113,7 @@ class ThumbnailConfig:
     font_size_title: int = 72  # Font size for title
     font_size_subtitle: int = 14  # Font size for video subtitles
     logo_path: str = ""  # Path to logo image file
+    outro_path: str = ""  # Path to outro video file
 
 
 def find_chinese_font() -> Path | None:
@@ -175,4 +176,5 @@ def get_thumbnail_config() -> ThumbnailConfig:
         font_size_title=int(os.environ.get("THUMBNAIL_FONT_SIZE_TITLE", "72")),
         font_size_subtitle=int(os.environ.get("THUMBNAIL_FONT_SIZE_SUBTITLE", "14")),
         logo_path=os.environ.get("THUMBNAIL_LOGO_PATH", "material/logo.png"),
+        outro_path=os.environ.get("THUMBNAIL_OUTRO_PATH", "material/outro.mp4"),
     )
