@@ -464,7 +464,11 @@ def _run_remaining_phases(
                     except Exception as e:
                         click.echo(f"Warning: Failed to download cover image: {e}")
                 else:
-                    image_path = Path(image)
+                    local_image = Path(image)
+                    if local_image.exists():
+                        image_path = local_image
+                    else:
+                        click.echo(f"Warning: Image file not found: {image}")
 
             try:
                 generate_thumbnail(
