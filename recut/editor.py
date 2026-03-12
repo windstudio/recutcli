@@ -304,3 +304,44 @@ def _process_with_thumbnail(
         ])
 
     return output_path
+
+
+def append_outro(video_path: Path, outro_path: Path, output_path: Path) -> Path:
+    """Append outro video to main video using FFmpeg concat.
+
+    The outro video keeps its original audio. No additional filters applied.
+
+    Args:
+        video_path: Path to the main video (with dubbing, subtitles, logo)
+        outro_path: Path to the outro video
+        output_path: Path for output video
+
+    Returns:
+        Path to the output video
+
+    Raises:
+        RuntimeError: If FFmpeg fails
+    """
+    output_path = Path(output_path)
+    video_path = Path(video_path)
+    outro_path = Path(outro_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write(f"file '{video_path.resolve()}'\n")
+        f.write(f"file '{outro_path.resolve()}'\n")
+        list_file = f.name
+
+    try:
+        _run_ffmpeg([
+            get_ffmpeg_path(), "-f", "concat", "-safe", "0",
+            "-i", list_file,
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-y", str(output_path)
+        ])
+    finally:
+        Path(list_file).unlink()
+
+    return output_path
