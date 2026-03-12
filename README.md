@@ -151,7 +151,7 @@ WHISPER_MODEL=small
 
 # Thumbnail Configuration (optional)
 THUMBNAIL_FONT=/path/to/chinese-font.ttf
-THUMBNAIL_LOGO_PATH=images/logo.png
+THUMBNAIL_LOGO_PATH=material/logo.png
 THUMBNAIL_FONT_SIZE_TITLE=72
 ```
 
@@ -209,7 +209,7 @@ THUMBNAIL_FONT_SIZE_TITLE=72
 THUMBNAIL_FONT_SIZE_SUBTITLE=14
 
 # Optional: Logo to overlay throughout video (top-left corner, 70% opacity)
-THUMBNAIL_LOGO_PATH=images/logo.png
+THUMBNAIL_LOGO_PATH=material/logo.png
 ```
 
 **Font Setup**: The tool auto-detects Chinese fonts (站酷高端黑, Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.

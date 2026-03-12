@@ -174,5 +174,5 @@ def get_thumbnail_config() -> ThumbnailConfig:
         font_path=font_path,
         font_size_title=int(os.environ.get("THUMBNAIL_FONT_SIZE_TITLE", "72")),
         font_size_subtitle=int(os.environ.get("THUMBNAIL_FONT_SIZE_SUBTITLE", "14")),
-        logo_path=os.environ.get("THUMBNAIL_LOGO_PATH", "images/logo.png"),
+        logo_path=os.environ.get("THUMBNAIL_LOGO_PATH", "material/logo.png"),
     )
