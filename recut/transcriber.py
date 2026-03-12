@@ -1,6 +1,7 @@
 # recut/transcriber.py
 """Audio extraction and transcription using Whisper."""
 
+import warnings
 from pathlib import Path
 import subprocess
 
@@ -54,10 +55,12 @@ def transcribe_audio(audio_path: Path, model: str = "small") -> str:
     if not audio_path.exists():
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-    # Load model and transcribe
+    # Load model and transcribe (suppress FP16 warning on CPU)
     try:
-        whisper_model = whisper.load_model(model)
-        result = whisper_model.transcribe(str(audio_path))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*FP16 is not supported on CPU.*")
+            whisper_model = whisper.load_model(model)
+            result = whisper_model.transcribe(str(audio_path))
     except Exception as e:
         raise RuntimeError(f"Failed to transcribe audio {audio_path}: {e}")
 

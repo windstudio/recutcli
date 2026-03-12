@@ -1,5 +1,6 @@
 """Subtitle generation and alignment using Whisper."""
 
+import warnings
 from pathlib import Path
 
 import whisper
@@ -43,8 +44,10 @@ def generate_srt(
         model = config.whisper_model
 
     try:
-        whisper_model = whisper.load_model(model)
-        result = whisper_model.transcribe(str(audio_path))
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*FP16 is not supported on CPU.*")
+            whisper_model = whisper.load_model(model)
+            result = whisper_model.transcribe(str(audio_path))
 
         # Generate SRT content
         srt_lines = []
