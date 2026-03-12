@@ -411,8 +411,10 @@ def _run_remaining_phases(
     click.echo(f"Dubbing audio duration: {dubbing_duration:.1f}s")
 
     # Phase 6: Select fragments
-    click.echo("Selecting best fragments based on dubbing duration...")
-    selected = select_top_fragments(fragments, target_duration=dubbing_duration) or fragments
+    # Use max of dubbing duration and target duration to ensure video is long enough
+    video_target_duration = max(dubbing_duration, config.max_duration)
+    click.echo(f"Selecting best fragments for {video_target_duration:.1f}s target...")
+    selected = select_top_fragments(fragments, target_duration=video_target_duration) or fragments
     total_duration = sum(f.end - f.start for f in selected)
     click.echo(f"Selected {len(selected)} fragments ({total_duration:.1f}s total)")
 
