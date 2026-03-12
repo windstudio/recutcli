@@ -32,6 +32,8 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 | `--title` | English title from video page (optional, used for generating Chinese title) |
 | `--image` | Main image URL or path for thumbnail generation |
 | `--tts-engine` | TTS engine: edge, coqui, minimax (default: edge) |
+| `--pause-on-chs-script` | Pause after generating Chinese script for user review |
+| `--resume` | Resume from checkpoint (directory or .md file path) |
 
 ### Examples
 
@@ -53,6 +55,45 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 \
   --video-url "https://example.com/video.mp4"
 ```
 
+### Modes
+
+Recut supports two workflow modes:
+
+**Automatic Mode** (default): Runs end-to-end without interruption. Best for batch processing.
+
+**Semi-Automatic Mode**: Pauses after generating the Chinese script for user review. Use `--pause-on-chs-script` to enable:
+
+```bash
+recut https://kickstarter.com/projects/xxx -o output.mp4 --pause-on-chs-script
+```
+
+This pauses before TTS generation, allowing you to:
+1. Review and edit the generated Chinese script in `output/output.md`
+2. Edit scene selections in `output/output_scenes.json`
+3. Resume when ready: `recut --resume output/` or `recut --resume output/output.md`
+
+### Resume Workflow
+
+When resuming from a paused checkpoint:
+
+```bash
+# First run - pauses after script generation
+recut https://kickstarter.com/projects/xxx -o output.mp4 --pause-on-chs-script
+
+# Edit the script and scenes as needed
+# output/output.md          - Chinese script (title, transcript, tags)
+# output/output_scenes.json - Scene timestamps for video cutting
+
+# Resume processing
+recut --resume output/
+```
+
+You can also resume from the .md file directly:
+
+```bash
+recut --resume output/output.md
+```
+
 ### Output Structure
 
 Running `recut https://kickstarter.com/projects/xxx/sample-project -o sample.mp4` generates:
@@ -62,6 +103,8 @@ output/
 ├── sample.mp4          # Final video with Chinese dubbing and subtitles
 ├── sample.md           # Chinese script with title, transcript, tags, and source URL
 └── sample/             # Intermediate files
+    ├── sample_metadata.json  # Checkpoint metadata for resume
+    ├── sample_scenes.json    # Scene timestamps for video cutting
     ├── sample_script.md   # English transcript
     ├── sample_dubbing.wav # TTS-generated Chinese audio
     ├── sample_nodub.mp4   # Short video without dubbing

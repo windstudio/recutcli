@@ -26,3 +26,6 @@ build/
 *.mp4
 *.ts
 *.m3u8
+
+# Output
+output/
