@@ -92,7 +92,19 @@ def load_scenes(path: Path) -> list[Scene]:
     if not path.exists():
         raise FileNotFoundError(f"Scenes file not found: {path}")
 
-    data = json.loads(path.read_text(encoding="utf-8"))
+    raw_bytes = path.read_bytes()
+    encodings = ["utf-8", "gbk", "gb18030"]
+
+    data = None
+    for encoding in encodings:
+        try:
+            data = json.loads(raw_bytes.decode(encoding))
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if data is None:
+        raise ValueError(f"Failed to decode scenes file: {path}")
     if "fragments" not in data:
         raise ValueError(f"Invalid scenes file format: missing 'fragments' key")
 
@@ -128,10 +140,21 @@ def load_metadata(path: Path) -> dict:
 
     Raises:
         FileNotFoundError: If file doesn't exist
+        ValueError: If file cannot be decoded or parsed
     """
     if not path.exists():
         raise FileNotFoundError(f"Metadata file not found: {path}")
-    return json.loads(path.read_text(encoding="utf-8"))
+
+    raw_bytes = path.read_bytes()
+    encodings = ["utf-8", "gbk", "gb18030"]
+
+    for encoding in encodings:
+        try:
+            return json.loads(raw_bytes.decode(encoding))
+        except UnicodeDecodeError:
+            continue
+
+    raise ValueError(f"Failed to decode metadata file: {path}")
 
 
 def create_metadata(
