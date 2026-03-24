@@ -1,7 +1,7 @@
 [project]
 name = "recut"
 version = "0.1.0"
-description = "Auto-clip Kickstarter videos into 25-second social media shorts"
+description = "Auto-clip Kickstarter videos into social media shorts"
 requires-python = ">=3.10"
 dependencies = [
     "click>=8.0.0",
