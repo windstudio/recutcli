@@ -3,7 +3,7 @@
 import json
 import re
 import subprocess
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 
 from recut.downloader import get_ffmpeg_path
@@ -14,21 +14,22 @@ class Scene:
     """A video scene/fragment."""
     start: float
     end: float
-    score_change_count: int = 0
+    score_change_count: int = 0  # Stores motion intensity score (multiplied by 100 for int storage)
 
 
 def score_fragment(fragment: Scene) -> float:
-    """Score a video fragment based on scene changes and duration.
+    """Score a video fragment based on motion intensity and duration.
 
     Higher scores indicate more interesting content.
+    score_change_count stores motion intensity * 100.
     """
     duration = fragment.end - fragment.start
 
     if duration <= 0:
         return 0.0
 
-    # Scene change count (more changes = more interesting)
-    scene_score = float(fragment.score_change_count)
+    # Motion score (stored as int * 100, convert back to float)
+    motion_score = fragment.score_change_count / 100.0
 
     # Duration penalty (too short or too long is less ideal)
     if duration < 2:
@@ -38,7 +39,7 @@ def score_fragment(fragment: Scene) -> float:
     else:
         duration_penalty = 1.0  # No penalty for ideal range
 
-    return scene_score * duration_penalty
+    return motion_score * duration_penalty
 
 
 def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
@@ -94,14 +95,14 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
     if prev_time < duration:
         fragments.append(Scene(start=prev_time, end=duration, score_change_count=0))
 
-    # Score each fragment based on scene changes within it
+    # Calculate motion score for each fragment
     for i, frag in enumerate(fragments):
-        # Count how many scene changes fall within this fragment
-        changes = sum(1 for s in scenes if frag.start < s < frag.end)
+        motion_score = calculate_motion_score(video_path, frag.start, frag.end)
+        # Multiply by 100 to store as integer (preserves 2 decimal places)
         fragments[i] = Scene(
             start=frag.start,
             end=frag.end,
-            score_change_count=changes + 1  # +1 for the scene that created this fragment
+            score_change_count=int(motion_score * 100)
         )
 
     return fragments
@@ -127,6 +128,54 @@ def get_video_duration(video_path: Path) -> float:
         seconds = float(match.group(3))
         return hours * 3600 + minutes * 60 + seconds
     return 0.0
+
+
+def calculate_motion_score(video_path: Path, start: float, end: float) -> float:
+    """Calculate motion intensity for a video segment using ffmpeg signalstats.
+
+    Uses ffmpeg's signalstats filter to compute YDIF (luma difference between frames).
+    Higher values indicate more motion/activity in the segment.
+
+    Args:
+        video_path: Path to video file
+        start: Start time in seconds
+        end: End time in seconds
+
+    Returns:
+        Average YDIF value (motion intensity), 0.0 if calculation fails
+    """
+    duration = end - start
+    if duration <= 0:
+        return 0.0
+
+    cmd = [
+        get_ffmpeg_path(),
+        "-ss", str(start),
+        "-i", str(video_path),
+        "-t", str(duration),
+        "-vf", "signalstats",
+        "-f", "null",
+        "-"
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    # Parse YDIF values from signalstats output
+    # Format: "frame:X    pts:X    ... YDIF:X.XX ..."
+    ydif_values = []
+    for line in result.stderr.split("\n"):
+        if "YDIF:" in line:
+            try:
+                ydif_str = line.split("YDIF:")[1].split()[0]
+                ydif_values.append(float(ydif_str))
+            except (IndexError, ValueError):
+                continue
+
+    if not ydif_values:
+        return 0.0
+
+    # Return average YDIF as motion score
+    return sum(ydif_values) / len(ydif_values)
 
 
 def select_top_fragments(fragments: list[Scene], target_duration: float) -> list[Scene]:
