@@ -82,11 +82,13 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 --pause-on-chs-script
 
 # Edit the script and scenes as needed
 # output/output.md          - Chinese script (title, transcript, tags)
-# output/output_scenes.json - Scene timestamps for video cutting
+# output/output_scenes.json - Scene timestamps with motion scores (score_change_count)
 
 # Resume processing
 recut --resume output/
 ```
+
+The `score_change_count` in scenes.json represents motion intensity (×100). Higher values indicate more dynamic content. You can manually adjust scene selections by editing this file.
 
 You can also resume from the .md file directly:
 
@@ -115,6 +117,7 @@ output/
 
 ### Video Features
 
+- **Smart Fragment Selection**: Uses motion detection to select the most dynamic video segments. Fragments with higher motion intensity are prioritized, ensuring the final video captures the most engaging content.
 - **Thumbnail Intro**: The first 0.5 seconds show a thumbnail with the Chinese title before the video content
 - **Slanted Poster Thumbnail**: Thumbnails feature a slanted image mask, gradient background, and skewed title text
 - **Logo Overlay**: If configured, a logo is displayed in the top-left corner throughout the video
