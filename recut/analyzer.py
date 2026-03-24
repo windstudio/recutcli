@@ -131,10 +131,10 @@ def get_video_duration(video_path: Path) -> float:
 
 
 def calculate_motion_score(video_path: Path, start: float, end: float) -> float:
-    """Calculate motion intensity for a video segment using ffmpeg signalstats.
+    """Calculate motion intensity for a video segment.
 
-    Uses ffmpeg's signalstats filter to compute YDIF (luma difference between frames).
-    Higher values indicate more motion/activity in the segment.
+    Samples frames from the segment and calculates average pixel difference
+    between consecutive frames as a measure of motion intensity.
 
     Args:
         video_path: Path to video file
@@ -142,40 +142,132 @@ def calculate_motion_score(video_path: Path, start: float, end: float) -> float:
         end: End time in seconds
 
     Returns:
-        Average YDIF value (motion intensity), 0.0 if calculation fails
+        Average frame difference (0.0-255.0), 0.0 if calculation fails
+    """
+    import tempfile
+    import os
+
+    duration = end - start
+    if duration <= 0:
+        return 0.0
+
+    # Sample up to 10 frames evenly distributed across the segment
+    num_samples = min(10, max(2, int(duration * 2)))  # ~2 samples per second, max 10
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Extract frames using ffmpeg
+        output_pattern = os.path.join(tmpdir, "frame_%03d.png")
+
+        cmd = [
+            get_ffmpeg_path(),
+            "-ss", str(start),
+            "-i", str(video_path),
+            "-t", str(duration),
+            "-vf", f"fps=1/{duration/(num_samples-1):.3f}",  # Evenly spaced frames
+            "-vsync", "vfr",
+            "-q:v", "2",
+            output_pattern
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        # Find extracted frames
+        frames = sorted([f for f in os.listdir(tmpdir) if f.startswith("frame_") and f.endswith(".png")])
+
+        if len(frames) < 2:
+            # Fallback: try extracting with different approach
+            cmd = [
+                get_ffmpeg_path(),
+                "-ss", str(start),
+                "-i", str(video_path),
+                "-t", str(duration),
+                "-vf", f"select='not(mod(n\\,10))'",  # Every 10th frame
+                "-vsync", "vfr",
+                "-q:v", "2",
+                output_pattern
+            ]
+            subprocess.run(cmd, capture_output=True, text=True)
+            frames = sorted([f for f in os.listdir(tmpdir) if f.startswith("frame_") and f.endswith(".png")])
+
+        if len(frames) < 2:
+            return 0.0
+
+        # Calculate average difference between consecutive frames
+        try:
+            from PIL import Image
+            import numpy as np
+
+            diffs = []
+            prev_frame = None
+
+            for frame_file in frames:
+                frame_path = os.path.join(tmpdir, frame_file)
+                img = Image.open(frame_path).convert('L')  # Convert to grayscale
+                arr = np.array(img, dtype=np.float32)
+
+                if prev_frame is not None:
+                    # Calculate mean absolute difference
+                    diff = np.mean(np.abs(arr - prev_frame))
+                    diffs.append(diff)
+
+                prev_frame = arr
+
+            if not diffs:
+                return 0.0
+
+            return sum(diffs) / len(diffs)
+
+        except ImportError:
+            # Fallback: use ffmpeg's frame difference detection
+            return _calculate_motion_via_ffmpeg(video_path, start, end)
+
+
+def _calculate_motion_via_ffmpeg(video_path: Path, start: float, end: float) -> float:
+    """Fallback motion calculation using ffmpeg's tblend filter.
+
+    Args:
+        video_path: Path to video file
+        start: Start time in seconds
+        end: End time in seconds
+
+    Returns:
+        Motion score (0.0 if calculation fails)
     """
     duration = end - start
     if duration <= 0:
         return 0.0
 
+    # Use tblend filter to compute frame differences and metadata to get stats
     cmd = [
         get_ffmpeg_path(),
         "-ss", str(start),
         "-i", str(video_path),
         "-t", str(duration),
-        "-vf", "signalstats",
+        "-vf", "tblend=all_mode=difference,signalstats",
         "-f", "null",
         "-"
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True)
 
-    # Parse YDIF values from signalstats output
-    # Format: "frame:X    pts:X    ... YDIF:X.XX ..."
-    ydif_values = []
+    # Try to parse YAVG from signalstats output (average luma after difference)
+    # When combined with tblend difference mode, this represents motion
+    yavg_values = []
     for line in result.stderr.split("\n"):
-        if "YDIF:" in line:
+        if "YAVG:" in line or "YDIF:" in line:
             try:
-                ydif_str = line.split("YDIF:")[1].split()[0]
-                ydif_values.append(float(ydif_str))
+                # Try YAVG first (average luma after difference = motion intensity)
+                if "YAVG:" in line:
+                    val_str = line.split("YAVG:")[1].split()[0]
+                    yavg_values.append(float(val_str))
             except (IndexError, ValueError):
                 continue
 
-    if not ydif_values:
+    if not yavg_values:
         return 0.0
 
-    # Return average YDIF as motion score
-    return sum(ydif_values) / len(ydif_values)
+    # Return average YAVG (which represents motion intensity after difference)
+    return sum(yavg_values) / len(yavg_values)
 
 
 def select_top_fragments(fragments: list[Scene], target_duration: float) -> list[Scene]:
