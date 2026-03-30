@@ -427,9 +427,8 @@ def generate_slanted_poster(
         if main_img.mode != "RGBA":
             main_img = main_img.convert("RGBA")
 
-        # Scale image to 1.2x canvas width for larger display area
-        # Then center horizontally before slant crop
-        target_width = int(canvas_width * 1.2)
+        # Scale image to 1.1x canvas width for slightly larger display
+        target_width = int(canvas_width * 1.1)
         if main_img.width != target_width:
             scale_ratio = target_width / main_img.width
             new_height = int(main_img.height * scale_ratio)
