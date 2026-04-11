@@ -73,7 +73,7 @@ def get_metadata_generation_prompt(
 口播文案要求：
 1. 采用"3秒钩子+中间内容+最后总结"的结构
 2. 口语化，适合短视频节奏
-3. 【重要】总字数精确控制在{min_chars}-{max_chars}字之间（目标{target_chars}字），这是硬性要求
+3. 【硬性约束】总字数必须严格控制在{min_chars}-{max_chars}字之间，目标{target_chars}字。超出此范围的输出将被拒绝。
 4. 3秒钩子吸睛、抓人，自带好奇、利益、反差、痛点其中一种
 5. 按照自然的语义停顿分行，每行一个小句或短语
 6. 英文内容为语音识别结果，其中的品牌或型号可能不准确，如有中文/英文标题且其中包含品牌或型号，请以中文/英文标题中的品牌和型号为准
@@ -134,6 +134,58 @@ def parse_metadata_response(response: str) -> dict:
     return result
 
 
+def _count_chars(text: str) -> int:
+    """Count Chinese characters in text, excluding whitespace and punctuation.
+
+    Args:
+        text: Text to count
+
+    Returns:
+        Character count
+    """
+    # Remove whitespace and newlines
+    text = text.replace(" ", "").replace("\n", "")
+    return len(text)
+
+
+def _get_revision_prompt(
+    transcript: str,
+    min_chars: int,
+    max_chars: int,
+    target_chars: int,
+    action: str
+) -> str:
+    """Generate prompt for transcript revision.
+
+    Args:
+        transcript: Current transcript text
+        min_chars: Minimum allowed characters
+        max_chars: Maximum allowed characters
+        target_chars: Target character count
+        action: "compress" or "expand"
+
+    Returns:
+        Prompt string for LLM
+    """
+    if action == "compress":
+        instruction = f"以下口播文案字数过多，请压缩到{min_chars}-{max_chars}字（目标{target_chars}字）。保留核心信息和吸引力，删除冗余内容。"
+    else:
+        instruction = f"以下口播文案字数不足，请扩充到{min_chars}-{max_chars}字（目标{target_chars}字）。增加细节和描述，保持口语化风格。"
+
+    return f"""{instruction}
+
+严格要求：
+- 最终字数必须在{min_chars}-{max_chars}字之间
+- 保持"3秒钩子+中间内容+最后总结"的结构
+- 保持口语化、适合短视频节奏
+- 按照自然的语义停顿分行，每行一个小句
+
+原口播文案：
+{transcript}
+
+请直接输出修改后的口播文案，不要输出其他内容："""
+
+
 def translate_and_generate_metadata(
     english_text: str,
     api_key: str,
@@ -142,7 +194,8 @@ def translate_and_generate_metadata(
     duration: int = 30,
     english_title: str | None = None,
     chs_title: str | None = None,
-    tts_engine: str | None = None
+    tts_engine: str | None = None,
+    max_retries: int = 3
 ) -> dict:
     """Translate English text and generate Chinese metadata (title, transcript, tags).
 
@@ -155,6 +208,7 @@ def translate_and_generate_metadata(
         english_title: Optional English title to translate/refine
         chs_title: Optional Chinese title to override LLM-generated title
         tts_engine: TTS engine name for character rate adjustment
+        max_retries: Maximum number of retries for character count adjustment (default 3)
 
     Returns:
         dict with keys: title (str), transcript (str), tags (list[str])
@@ -166,6 +220,13 @@ def translate_and_generate_metadata(
         api_key=api_key,
         base_url=base_url
     )
+
+    # Calculate target character count
+    char_rate = TTS_CHAR_RATES.get(tts_engine, TTS_CHAR_RATES["edge"])
+    target_chars = int(duration * char_rate)
+    tolerance = max(3, int(target_chars * 0.05))
+    min_chars = target_chars - tolerance
+    max_chars = target_chars + tolerance
 
     try:
         prompt = get_metadata_generation_prompt(duration, english_title, chs_title, tts_engine)
@@ -182,6 +243,38 @@ def translate_and_generate_metadata(
         if not content:
             raise RuntimeError("Metadata generation failed: empty response")
         result = parse_metadata_response(content)
+
+        # Validate and adjust transcript character count
+        char_count = _count_chars(result["transcript"])
+        retry_count = 0
+
+        while (char_count < min_chars or char_count > max_chars) and retry_count < max_retries:
+            action = "compress" if char_count > max_chars else "expand"
+            print(f"Transcript has {char_count} chars (target: {min_chars}-{max_chars}), {action}ing... (attempt {retry_count + 1}/{max_retries})")
+
+            revision_prompt = _get_revision_prompt(
+                result["transcript"],
+                min_chars,
+                max_chars,
+                target_chars,
+                action
+            )
+            revision_response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": revision_prompt}]
+            )
+            revised_transcript = revision_response.choices[0].message.content
+            if revised_transcript:
+                result["transcript"] = revised_transcript.strip()
+                char_count = _count_chars(result["transcript"])
+
+            retry_count += 1
+
+        # Final status
+        if char_count < min_chars or char_count > max_chars:
+            print(f"Warning: Could not achieve target character count after {max_retries} retries. Final count: {char_count} chars")
+        else:
+            print(f"Transcript character count: {char_count} (target: {min_chars}-{max_chars})")
 
         # Override title if chs_title is provided (exclude whitespace-only strings)
         if chs_title and chs_title.strip():

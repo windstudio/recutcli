@@ -16,10 +16,11 @@ def test_translate_and_generate_metadata_with_title(monkeypatch):
 
     def mock_create(**kwargs):
         calls.append(kwargs)
+        # Return transcript with enough characters to pass validation (target: 100-110 chars for 30s edge TTS)
         return type('Response', (), {
             'choices': [type('Choice', (), {
                 'message': type('Message', (), {
-                    'content': "---TITLE---\n测试标题\n---TRANSCRIPT---\n第一句\n第二句\n---TAGS---\n标签1,标签2,标签3"
+                    'content': "---TITLE---\n测试标题\n---TRANSCRIPT---\n第一句话开始测试内容第二句话继续第三句话结束\n第四句话增加一些字数第五句话达到目标字数\n---TAGS---\n标签1,标签2,标签3"
                 })
             })]
         })()
@@ -40,7 +41,7 @@ def test_translate_and_generate_metadata_with_title(monkeypatch):
     )
 
     assert result["title"] == "测试标题"
-    assert result["transcript"] == "第一句\n第二句"
+    assert "第一句话开始测试内容" in result["transcript"]
     assert result["tags"] == ["标签1", "标签2", "标签3"]
 
 
@@ -49,10 +50,11 @@ def test_translate_and_generate_metadata_without_title(monkeypatch):
     from recut.translator import translate_and_generate_metadata
 
     def mock_create(**kwargs):
+        # Return transcript with enough characters to pass validation (target: 100-110 chars for 30s edge TTS)
         return type('Response', (), {
             'choices': [type('Choice', (), {
                 'message': type('Message', (), {
-                    'content': "---TITLE---\n自动生成标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签A,标签B"
+                    'content': "---TITLE---\n自动生成标题\n---TRANSCRIPT---\n这是一段足够长的内容用于测试字数验证功能是否正常工作\n第二行继续增加一些文字来达到目标字数范围\n---TAGS---\n标签A,标签B"
                 })
             })]
         })()
@@ -73,7 +75,7 @@ def test_translate_and_generate_metadata_without_title(monkeypatch):
     )
 
     assert result["title"] == "自动生成标题"
-    assert result["transcript"] == "内容"
+    assert "这是一段足够长的内容" in result["transcript"]
     assert result["tags"] == ["标签A", "标签B"]
 
 
@@ -282,10 +284,11 @@ def test_translate_and_generate_metadata_with_chs_title_override(monkeypatch):
     from recut.translator import translate_and_generate_metadata
 
     def mock_create(**kwargs):
+        # Return transcript with enough characters to pass validation (target: 100-110 chars for 30s edge TTS)
         return type('Response', (), {
             'choices': [type('Choice', (), {
                 'message': type('Message', (), {
-                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n第一句\n第二句\n---TAGS---\n标签1,标签2"
+                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n第一句话开始测试内容第二句话继续第三句话结束\n第四句话增加一些字数第五句话达到目标字数\n---TAGS---\n标签1,标签2"
                 })
             })]
         })()
@@ -307,7 +310,7 @@ def test_translate_and_generate_metadata_with_chs_title_override(monkeypatch):
 
     # Title should be overridden by chs_title
     assert result["title"] == "自定义中文标题"
-    assert result["transcript"] == "第一句\n第二句"
+    assert "第一句话开始测试内容" in result["transcript"]
     assert result["tags"] == ["标签1", "标签2"]
 
 
@@ -316,10 +319,11 @@ def test_translate_and_generate_metadata_with_empty_chs_title(monkeypatch):
     from recut.translator import translate_and_generate_metadata
 
     def mock_create(**kwargs):
+        # Return transcript with enough characters to pass validation
         return type('Response', (), {
             'choices': [type('Choice', (), {
                 'message': type('Message', (), {
-                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签"
+                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n这是一段足够长的内容用于测试字数验证功能是否正常工作\n第二行继续增加一些文字来达到目标字数范围\n---TAGS---\n标签"
                 })
             })]
         })()
@@ -358,10 +362,11 @@ def test_translate_and_generate_metadata_without_chs_title(monkeypatch):
     from recut.translator import translate_and_generate_metadata
 
     def mock_create(**kwargs):
+        # Return transcript with enough characters to pass validation
         return type('Response', (), {
             'choices': [type('Choice', (), {
                 'message': type('Message', (), {
-                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n内容\n---TAGS---\n标签"
+                    'content': "---TITLE---\nLLM生成的标题\n---TRANSCRIPT---\n这是一段足够长的内容用于测试字数验证功能是否正常工作\n第二行继续增加一些文字来达到目标字数范围\n---TAGS---\n标签"
                 })
             })]
         })()

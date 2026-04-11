@@ -76,7 +76,8 @@ def _split_by_punctuation(text: str) -> list[str]:
         List of text segments, each ending with punctuation (except possibly the last)
     """
     # Chinese punctuation marks that should end a subtitle line
-    punctuations = "，。！？、；：""''）】》"
+    # Note:顿号（、）不作为换行分隔符，保持词语连贯
+    punctuations = "，。！？；：""''）】》"
 
     segments = []
     current = ""
