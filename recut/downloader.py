@@ -40,6 +40,15 @@ def check_ffmpeg() -> bool:
         return False
 
 
+def run_ffmpeg(cmd: list[str]) -> subprocess.CompletedProcess:
+    """Run an ffmpeg command, raising RuntimeError with stderr detail on failure."""
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        error_msg = (result.stderr or result.stdout or "Unknown error")[-500:]
+        raise RuntimeError(f"FFmpeg failed (code {result.returncode}): {error_msg}")
+    return result
+
+
 def download_and_merge_m3u8(m3u8_url: str, output_path: Path, retries: int = 3) -> Path:
     """Download m3u8 stream and merge into a single video file.
 

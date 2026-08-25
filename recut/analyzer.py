@@ -3,12 +3,11 @@
 import json
 import os
 import re
-import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
-from recut.downloader import get_ffmpeg_path
+from recut.downloader import get_ffmpeg_path, run_ffmpeg
 
 
 @dataclass
@@ -16,14 +15,14 @@ class Scene:
     """A video scene/fragment."""
     start: float
     end: float
-    score_change_count: int = 0  # Stores motion intensity score (multiplied by 100 for int storage)
+    motion_intensity: int = 0  # Motion intensity score (multiplied by 100 for int storage)
 
 
 def score_fragment(fragment: Scene) -> float:
     """Score a video fragment based on motion intensity and duration.
 
     Higher scores indicate more interesting content.
-    score_change_count stores motion intensity * 100.
+    motion_intensity stores motion intensity * 100.
     """
     duration = fragment.end - fragment.start
 
@@ -31,7 +30,7 @@ def score_fragment(fragment: Scene) -> float:
         return 0.0
 
     # Motion score (stored as int * 100, convert back to float)
-    motion_score = fragment.score_change_count / 100.0
+    motion_score = fragment.motion_intensity / 100.0
 
     # Duration penalty (too short or too long is less ideal)
     if duration < 2:
@@ -62,7 +61,7 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
         "-"
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_ffmpeg(cmd)
 
     # Parse scene change timestamps from stderr
     scenes = []
@@ -90,12 +89,12 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
 
     for scene_time in scenes:
         if scene_time > prev_time:
-            fragments.append(Scene(start=prev_time, end=scene_time, score_change_count=1))
+            fragments.append(Scene(start=prev_time, end=scene_time))
         prev_time = scene_time
 
     # Add final fragment
     if prev_time < duration:
-        fragments.append(Scene(start=prev_time, end=duration, score_change_count=0))
+        fragments.append(Scene(start=prev_time, end=duration))
 
     # Calculate motion score for each fragment
     for i, frag in enumerate(fragments):
@@ -104,7 +103,7 @@ def detect_scenes(video_path: Path, threshold: float = 0.3) -> list[Scene]:
         fragments[i] = Scene(
             start=frag.start,
             end=frag.end,
-            score_change_count=int(motion_score * 100)
+            motion_intensity=int(motion_score * 100)
         )
 
     return fragments
@@ -120,7 +119,7 @@ def get_video_duration(video_path: Path) -> float:
         "-"
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_ffmpeg(cmd)
     # Parse duration from stderr (ffmpeg outputs info to stderr)
     # Look for "Duration: HH:MM:SS.mmm" in the output
     match = re.search(r"Duration: (\d+):(\d+):(\d+\.?\d*)", result.stderr)
@@ -163,7 +162,7 @@ def calculate_motion_score(video_path: Path, start: float, end: float) -> float:
             "-vsync", "vfr", "-q:v", "2",
             output_pattern
         ]
-        subprocess.run(cmd, capture_output=True, text=True)
+        run_ffmpeg(cmd)
 
         frames = sorted(f for f in os.listdir(tmpdir) if f.startswith("frame_") and f.endswith(".png"))
 
@@ -176,7 +175,7 @@ def calculate_motion_score(video_path: Path, start: float, end: float) -> float:
                 "-vsync", "vfr", "-q:v", "2",
                 output_pattern
             ]
-            subprocess.run(cmd, capture_output=True, text=True)
+            run_ffmpeg(cmd)
             frames = sorted(f for f in os.listdir(tmpdir) if f.startswith("frame_") and f.endswith(".png"))
 
         if len(frames) < 2:
@@ -214,7 +213,7 @@ def _calculate_motion_via_ffmpeg(video_path: Path, start: float, end: float) -> 
         "-vf", "tblend=all_mode=difference,signalstats",
         "-f", "null", "-"
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = run_ffmpeg(cmd)
 
     # Parse YAVG from signalstats (average luma after difference = motion intensity)
     yavg_values = []
@@ -283,7 +282,7 @@ def save_scenes_to_json(scenes: list[Scene], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     data = {
         "fragments": [
-            {"start": s.start, "end": s.end, "score_change_count": s.score_change_count}
+            {"start": s.start, "end": s.end, "motion_intensity": s.motion_intensity}
             for s in scenes
         ]
     }
@@ -314,7 +313,8 @@ def load_scenes_from_json(path: Path) -> list[Scene]:
         Scene(
             start=f["start"],
             end=f["end"],
-            score_change_count=f.get("score_change_count", 0)
+            # Accept legacy field name score_change_count from older scenes.json files
+            motion_intensity=f.get("motion_intensity", f.get("score_change_count", 0))
         )
         for f in data["fragments"]
     ]

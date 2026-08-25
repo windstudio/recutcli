@@ -63,7 +63,7 @@ def generate_srt(
         output_path.write_text("\n".join(srt_lines), encoding="utf-8")
         return output_path
     except Exception as e:
-        raise RuntimeError(f"Subtitle generation failed: {e}")
+        raise RuntimeError(f"Subtitle generation failed: {e}") from e
 
 
 def _split_by_punctuation(text: str) -> list[str]:
@@ -126,6 +126,7 @@ def align_subtitle(
     blocks = content.strip().split("\n\n")
 
     whisper_segments = []
+    skipped_blocks = 0
     for block in blocks:
         lines = block.strip().split("\n")
         if len(lines) >= 3:
@@ -136,8 +137,14 @@ def align_subtitle(
                 end = _parse_timestamp(end_str.strip())
                 text = "\n".join(lines[2:])  # Handle multi-line text
                 whisper_segments.append((start, end, text))
-            except Exception:
-                continue
+            except (ValueError, IndexError):
+                skipped_blocks += 1
+        else:
+            if block.strip():
+                skipped_blocks += 1
+
+    if skipped_blocks:
+        print(f"Warning: skipped {skipped_blocks} malformed subtitle block(s)")
 
     # Get expected text lines
     text_lines = [line.strip() for line in expected_text.strip().split("\n") if line.strip()]

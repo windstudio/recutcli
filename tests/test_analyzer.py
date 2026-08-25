@@ -3,20 +3,20 @@ from recut.analyzer import Scene, score_fragment, select_top_fragments
 
 
 def test_score_fragment_prefers_medium_length():
-    fragment = Scene(start=0.0, end=5.0, score_change_count=3)
+    fragment = Scene(start=0.0, end=5.0, motion_intensity=3)
     score = score_fragment(fragment)
     assert score > 0
 
 
 def test_score_fragment_penalizes_short():
-    short = Scene(start=0.0, end=1.0, score_change_count=1)
-    medium = Scene(start=0.0, end=5.0, score_change_count=1)
+    short = Scene(start=0.0, end=1.0, motion_intensity=1)
+    medium = Scene(start=0.0, end=5.0, motion_intensity=1)
     assert score_fragment(short) < score_fragment(medium)
 
 
 def test_score_fragment_penalizes_long():
-    long_frag = Scene(start=0.0, end=15.0, score_change_count=3)
-    medium = Scene(start=0.0, end=5.0, score_change_count=3)
+    long_frag = Scene(start=0.0, end=15.0, motion_intensity=3)
+    medium = Scene(start=0.0, end=5.0, motion_intensity=3)
     assert score_fragment(long_frag) < score_fragment(medium)
 
 
@@ -26,9 +26,9 @@ def test_select_top_fragments_respects_duration():
     # Requesting 15s: first fragment (10s) fits, but total < target
     # Second fragment (10s) is added to get closer to target
     fragments = [
-        Scene(start=0.0, end=10.0, score_change_count=5),
-        Scene(start=10.0, end=20.0, score_change_count=3),
-        Scene(start=20.0, end=30.0, score_change_count=1),
+        Scene(start=0.0, end=10.0, motion_intensity=5),
+        Scene(start=10.0, end=20.0, motion_intensity=3),
+        Scene(start=20.0, end=30.0, motion_intensity=1),
     ]
     selected = select_top_fragments(fragments, target_duration=15.0)
     total = sum(f.end - f.start for f in selected)
@@ -42,11 +42,11 @@ def test_select_top_fragments_exact_fit():
     """Test that fragments fit exactly when enough small fragments available."""
     # Many small fragments - can fit target exactly
     fragments = [
-        Scene(start=0.0, end=5.0, score_change_count=5),
-        Scene(start=5.0, end=10.0, score_change_count=4),
-        Scene(start=10.0, end=15.0, score_change_count=3),
-        Scene(start=15.0, end=20.0, score_change_count=2),
-        Scene(start=20.0, end=25.0, score_change_count=1),
+        Scene(start=0.0, end=5.0, motion_intensity=5),
+        Scene(start=5.0, end=10.0, motion_intensity=4),
+        Scene(start=10.0, end=15.0, motion_intensity=3),
+        Scene(start=15.0, end=20.0, motion_intensity=2),
+        Scene(start=20.0, end=25.0, motion_intensity=1),
     ]
     selected = select_top_fragments(fragments, target_duration=15.0)
     total = sum(f.end - f.start for f in selected)
@@ -60,8 +60,8 @@ def test_select_top_fragments_adds_more_when_insufficient():
     # 2 fragments of 5s each = 10s total available
     # Requesting 20s should select all fragments even though they don't fill target
     fragments = [
-        Scene(start=0.0, end=5.0, score_change_count=5),
-        Scene(start=5.0, end=10.0, score_change_count=3),
+        Scene(start=0.0, end=5.0, motion_intensity=5),
+        Scene(start=5.0, end=10.0, motion_intensity=3),
     ]
     selected = select_top_fragments(fragments, target_duration=20.0)
     total = sum(f.end - f.start for f in selected)
@@ -72,8 +72,8 @@ def test_select_top_fragments_adds_more_when_insufficient():
 
 def test_select_top_fragments_returns_time_ordered():
     fragments = [
-        Scene(start=20.0, end=25.0, score_change_count=5),  # High score, late
-        Scene(start=0.0, end=5.0, score_change_count=1),    # Low score, early
+        Scene(start=20.0, end=25.0, motion_intensity=5),  # High score, late
+        Scene(start=0.0, end=5.0, motion_intensity=1),    # Low score, early
     ]
     selected = select_top_fragments(fragments, target_duration=10.0)
     # Should be ordered by start time, not score

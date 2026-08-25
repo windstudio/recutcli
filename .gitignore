@@ -30,3 +30,6 @@ build/
 # Output
 output/
 sample/
+
+# Local media assets (logo, outro video)
+material/

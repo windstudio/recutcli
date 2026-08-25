@@ -1,20 +1,16 @@
 """Video editing: cut, concatenate, and transcode."""
 
-import subprocess
 import tempfile
 from pathlib import Path
 
 from recut.analyzer import Scene
 from recut.config import PlatformConfig, get_thumbnail_config
-from recut.downloader import get_ffmpeg_path
+from recut.downloader import get_ffmpeg_path, run_ffmpeg
 
 
 def _run_ffmpeg(cmd: list[str]) -> None:
     """Run FFmpeg command, raising on error."""
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        error_msg = result.stderr or result.stdout or "Unknown error"
-        raise RuntimeError(f"FFmpeg failed (code {result.returncode}): {error_msg}")
+    run_ffmpeg(cmd)
 
 
 def format_timestamp(seconds: float) -> str:
@@ -111,6 +107,64 @@ def extract_audio_for_mixing(video_path: Path, audio_path: Path) -> Path:
     return audio_path
 
 
+def _merge_with_audio(
+    video_path: Path,
+    dubbing_audio_path: Path,
+    original_audio_path: Path,
+    subtitle_filter: str,
+    output_path: Path,
+    dubbing_volume: float,
+    original_volume: float,
+    logo_path: Path | None
+) -> None:
+    """Merge video with mixed audio and subtitle filter, optional logo overlay.
+
+    Shared by the thumbnail/no-thumbnail merge paths; differs only in the
+    base video input.
+    """
+    audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
+
+    if logo_path:
+        # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
+        # Apply 70% opacity to logo
+        video_filter = f"[3:v]format=rgba,colorchannelmixer=aa=0.7[logo];[0:v][logo]overlay=40:40[vl];[vl]{subtitle_filter}[vout]"
+        _run_ffmpeg([
+            get_ffmpeg_path(),
+            "-i", str(video_path),
+            "-i", str(dubbing_audio_path),
+            "-i", str(original_audio_path),
+            "-i", str(logo_path),
+            "-filter_complex", f"{audio_filter};{video_filter}",
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-shortest",  # Trim video to match audio duration
+            "-y", str(output_path)
+        ])
+    else:
+        _run_ffmpeg([
+            get_ffmpeg_path(),
+            "-i", str(video_path),
+            "-i", str(dubbing_audio_path),
+            "-i", str(original_audio_path),
+            "-filter_complex", audio_filter,
+            "-vf", subtitle_filter,
+            "-map", "0:v", "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            "-shortest",  # Trim video to match audio duration
+            "-y", str(output_path)
+        ])
+
+
+def _build_subtitle_filter(subtitle_path_str: str, subtitle_font_size: int) -> str:
+    """Build the subtitles filter string with forced style."""
+    return f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize={subtitle_font_size}'"
+
+
 def merge_video_audio_subtitle(
     video_path: Path,
     original_audio_path: Path,
@@ -159,51 +213,19 @@ def merge_video_audio_subtitle(
         # Use temporary directory for thumbnail processing
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir = Path(tmpdir)
-            base_video = _process_with_thumbnail(
+            _process_with_thumbnail(
                 video_path, thumbnail_path, tmpdir, thumbnail_duration,
                 dubbing_audio_path, original_audio_path, subtitle_path_str,
                 output_path, dubbing_volume, original_volume, has_logo, logo_path
             )
     else:
         # No thumbnail, process directly
-        subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize={subtitle_font_size}'"
-        # Use duration=first to follow dubbing audio length
-        audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
-
-        if has_logo:
-            # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
-            # Apply 70% opacity to logo
-            video_filter = f"[3:v]format=rgba,colorchannelmixer=aa=0.7[logo];[0:v][logo]overlay=40:40[vl];[vl]{subtitle_filter}[vout]"
-            _run_ffmpeg([
-                get_ffmpeg_path(),
-                "-i", str(video_path),
-                "-i", str(dubbing_audio_path),
-                "-i", str(original_audio_path),
-                "-i", str(logo_path),
-                "-filter_complex", f"{audio_filter};{video_filter}",
-                "-map", "[vout]",
-                "-map", "[aout]",
-                "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-                "-c:a", "aac", "-b:a", "128k",
-                "-movflags", "+faststart",
-                "-shortest",  # Trim video to match audio duration
-                "-y", str(output_path)
-            ])
-        else:
-            _run_ffmpeg([
-                get_ffmpeg_path(),
-                "-i", str(video_path),
-                "-i", str(dubbing_audio_path),
-                "-i", str(original_audio_path),
-                "-filter_complex", audio_filter,
-                "-vf", subtitle_filter,
-                "-map", "0:v", "-map", "[aout]",
-                "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-                "-c:a", "aac", "-b:a", "128k",
-                "-movflags", "+faststart",
-                "-shortest",  # Trim video to match audio duration
-                "-y", str(output_path)
-            ])
+        subtitle_filter = _build_subtitle_filter(subtitle_path_str, subtitle_font_size)
+        _merge_with_audio(
+            video_path, dubbing_audio_path, original_audio_path,
+            subtitle_filter, output_path, dubbing_volume, original_volume,
+            logo_path if has_logo else None
+        )
 
     return output_path
 
@@ -262,46 +284,13 @@ def _process_with_thumbnail(
         Path(list_file).unlink()
 
     # Apply subtitles (timestamps already include offset if thumbnail was generated)
-    subtitle_filter = f"subtitles='{subtitle_path_str}':force_style='Alignment=2,MarginV=60,FontSize={subtitle_font_size}'"
+    subtitle_filter = _build_subtitle_filter(subtitle_path_str, subtitle_font_size)
 
-    # Build FFmpeg command based on logo presence
-    # Use duration=first to follow dubbing audio length
-    audio_filter = f"[1:a]volume={dubbing_volume}[voice];[2:a]volume={original_volume}[bg];[voice][bg]amix=inputs=2:duration=first[aout]"
-
-    if has_logo:
-        # Overlay logo on video (input 0: video, input 3: logo), then apply subtitles
-        # Apply 70% opacity to logo
-        video_filter = f"[3:v]format=rgba,colorchannelmixer=aa=0.7[logo];[0:v][logo]overlay=40:40[vl];[vl]{subtitle_filter}[vout]"
-        _run_ffmpeg([
-            get_ffmpeg_path(),
-            "-i", str(concat_video),
-            "-i", str(dubbing_audio_path),
-            "-i", str(original_audio_path),
-            "-i", str(logo_path),
-            "-filter_complex", f"{audio_filter};{video_filter}",
-            "-map", "[vout]",
-            "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-            "-c:a", "aac", "-b:a", "128k",
-            "-movflags", "+faststart",
-            "-shortest",  # Trim video to match dubbing audio duration
-            "-y", str(output_path)
-        ])
-    else:
-        _run_ffmpeg([
-            get_ffmpeg_path(),
-            "-i", str(concat_video),
-            "-i", str(dubbing_audio_path),
-            "-i", str(original_audio_path),
-            "-filter_complex", audio_filter,
-            "-vf", subtitle_filter,
-            "-map", "0:v", "-map", "[aout]",
-            "-c:v", "libx264", "-preset", "medium", "-crf", "23",
-            "-c:a", "aac", "-b:a", "128k",
-            "-movflags", "+faststart",
-            "-shortest",  # Trim video to match dubbing audio duration
-            "-y", str(output_path)
-        ])
+    _merge_with_audio(
+        concat_video, dubbing_audio_path, original_audio_path,
+        subtitle_filter, output_path, dubbing_volume, original_volume,
+        logo_path if has_logo else None
+    )
 
     return output_path
 

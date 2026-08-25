@@ -1,7 +1,6 @@
 # recut/cli.py
 """Command-line interface for recut."""
 
-import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -68,6 +67,7 @@ def _exit_on_error(message: str, error: Exception | None = None) -> None:
 @click.option("--image", type=str, help="主素材图路径或URL（用于封面图生成）")
 @click.option("--pause-on-chs-script", is_flag=True, help="Pause after generating Chinese script for user review")
 @click.option("--resume", default=None, help="Resume from checkpoint (directory or .md file path)")
+@click.option("--no-overwrite", is_flag=True, help="Fail if the output file already exists instead of overwriting")
 @click.version_option(version=__version__)
 def main(
     url: str | None,
@@ -82,6 +82,7 @@ def main(
     image: str | None,
     pause_on_chs_script: bool,
     resume: str | None,
+    no_overwrite: bool,
 ):
     """Download video from URL and create a short social media video with Chinese dubbing.
 
@@ -119,6 +120,10 @@ def main(
 
     # Prepend 'output' base directory
     output_path = Path("output") / output
+
+    # Guard against overwriting an existing output
+    if no_overwrite and output_path.exists():
+        _exit_on_error(f"Output file already exists (use without --no-overwrite to overwrite): {output_path}")
 
     # Setup output structure
     output_parent = output_path.parent
@@ -418,6 +423,12 @@ def _run_remaining_phases(
     total_duration = sum(f.end - f.start for f in selected)
     click.echo(f"Selected {len(selected)} fragments ({total_duration:.1f}s total)")
 
+    if total_duration < video_target_duration:
+        click.echo(
+            f"Warning: source video ({total_duration:.1f}s of usable scenes) is shorter than "
+            f"the {video_target_duration:.1f}s target; the final video will be trimmed by audio length."
+        )
+
     # Phase 7: Create short video
     nodub_video_path = checkpoint_dir / f"{output_stem}_nodub.mp4"
     if nodub_video_path.exists():
@@ -512,6 +523,12 @@ def _run_remaining_phases(
                 logo_path=logo_path
             )
         except Exception as e:
+            # Clean up the temp file so a failed merge doesn't leave debris behind
+            try:
+                if temp_output.exists():
+                    temp_output.unlink()
+            except Exception:
+                pass
             _exit_on_error("merging video", e)
 
         # Check for outro video

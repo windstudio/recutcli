@@ -6,6 +6,7 @@ import wave
 from pathlib import Path
 
 from recut.config import get_tts_config
+from recut.downloader import get_ffmpeg_path
 
 
 def get_audio_duration(audio_path: Path) -> float:
@@ -52,7 +53,7 @@ def _generate_edge_audio(text: str, output_path: Path, voice: str) -> Path:
 
         # Convert MP3 to WAV
         result = subprocess.run(
-            ["ffmpeg", "-y", "-i", str(mp3_path), "-acodec", "pcm_s16le", "-ar", "22050", "-ac", "1", str(output_path)],
+            [get_ffmpeg_path(), "-y", "-i", str(mp3_path), "-acodec", "pcm_s16le", "-ar", "22050", "-ac", "1", str(output_path)],
             capture_output=True, text=True
         )
 
@@ -63,13 +64,20 @@ def _generate_edge_audio(text: str, output_path: Path, voice: str) -> Path:
             raise RuntimeError(f"FFmpeg conversion failed: {result.stderr}")
 
         return output_path
+    except RuntimeError:
+        raise
     except Exception as e:
         raise RuntimeError(f"Edge TTS generation failed: {e}")
 
 
 def _generate_coqui_audio(text: str, output_path: Path, voice: str) -> Path:
     """Generate audio using Coqui TTS."""
-    from TTS.api import TTS
+    try:
+        from TTS.api import TTS
+    except ImportError as e:
+        raise RuntimeError(
+            "Coqui TTS is not installed. Install it with: pip install recut[tts-coqui]"
+        ) from e
 
     output_path = Path(output_path)
     _ensure_output_dir(output_path)
@@ -79,7 +87,10 @@ def _generate_coqui_audio(text: str, output_path: Path, voice: str) -> Path:
         tts.tts_to_file(text=text, file_path=str(output_path))
         return output_path
     except Exception as e:
-        raise RuntimeError(f"Coqui TTS generation failed: {e}")
+        raise RuntimeError(
+            f"Coqui TTS generation failed: {e}. "
+            "If the package is missing, install it with: pip install recut[tts-coqui]"
+        ) from e
 
 
 def _generate_minimax_audio(text: str, output_path: Path, voice_id: str | None = None) -> Path:

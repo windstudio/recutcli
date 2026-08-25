@@ -2,11 +2,8 @@
 """Checkpoint management for resumable recut workflow."""
 
 import json
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-
-from recut.analyzer import Scene
 
 
 def get_checkpoint_dir(output_path: Path) -> Path:
@@ -59,65 +56,6 @@ def check_progress(checkpoint_dir: Path, name: str) -> dict:
     }
 
 
-def save_scenes(scenes: list[Scene], path: Path) -> None:
-    """Save scenes to JSON file.
-
-    Args:
-        scenes: List of Scene objects
-        path: Output file path
-    """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    data = {
-        "fragments": [
-            {"start": s.start, "end": s.end, "score_change_count": s.score_change_count}
-            for s in scenes
-        ]
-    }
-    path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-
-
-def load_scenes(path: Path) -> list[Scene]:
-    """Load scenes from JSON file.
-
-    Args:
-        path: Input file path
-
-    Returns:
-        List of Scene objects
-
-    Raises:
-        FileNotFoundError: If file doesn't exist
-        ValueError: If file format is invalid
-    """
-    if not path.exists():
-        raise FileNotFoundError(f"Scenes file not found: {path}")
-
-    raw_bytes = path.read_bytes()
-    encodings = ["utf-8", "gbk", "gb18030"]
-
-    data = None
-    for encoding in encodings:
-        try:
-            data = json.loads(raw_bytes.decode(encoding))
-            break
-        except UnicodeDecodeError:
-            continue
-
-    if data is None:
-        raise ValueError(f"Failed to decode scenes file: {path}")
-    if "fragments" not in data:
-        raise ValueError(f"Invalid scenes file format: missing 'fragments' key")
-
-    return [
-        Scene(
-            start=f["start"],
-            end=f["end"],
-            score_change_count=f.get("score_change_count", 0)
-        )
-        for f in data["fragments"]
-    ]
-
-
 def save_metadata(metadata: dict, path: Path) -> None:
     """Save metadata to JSON file.
 
@@ -151,7 +89,7 @@ def load_metadata(path: Path) -> dict:
     for encoding in encodings:
         try:
             return json.loads(raw_bytes.decode(encoding))
-        except UnicodeDecodeError:
+        except (UnicodeDecodeError, json.JSONDecodeError):
             continue
 
     raise ValueError(f"Failed to decode metadata file: {path}")

@@ -34,6 +34,7 @@ recut https://kickstarter.com/projects/xxx -o output.mp4
 | `--tts-engine` | TTS engine: edge, coqui, minimax (default: edge) |
 | `--pause-on-chs-script` | Pause after generating Chinese script for user review |
 | `--resume` | Resume from checkpoint (directory or .md file path) |
+| `--no-overwrite` | Fail if the output file already exists instead of overwriting |
 
 ### Examples
 
@@ -82,13 +83,13 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 --pause-on-chs-script
 
 # Edit the script and scenes as needed
 # output/output.md          - Chinese script (title, transcript, tags)
-# output/output_scenes.json - Scene timestamps with motion scores (score_change_count)
+# output/output_scenes.json - Scene timestamps with motion scores (motion_intensity)
 
 # Resume processing
 recut --resume output/
 ```
 
-The `score_change_count` in scenes.json represents motion intensity (×100). Higher values indicate more dynamic content. You can manually adjust scene selections by editing this file.
+The `motion_intensity` in scenes.json represents motion intensity (×100). Higher values indicate more dynamic content. You can manually adjust scene selections by editing this file.
 
 You can also resume from the .md file directly:
 
@@ -121,7 +122,7 @@ output/
 - **Thumbnail Intro**: The first 0.5 seconds show a thumbnail with the Chinese title before the video content
 - **Slanted Poster Thumbnail**: Thumbnails feature a slanted image mask, gradient background, and skewed title text
 - **Logo Overlay**: If configured, a logo is displayed in the top-left corner throughout the video
-- **Subtitles**: Chinese subtitles are delayed 0.5s to avoid showing during thumbnail display
+- **Subtitles**: When a thumbnail intro is present, subtitles are delayed 0.5s so they don't show during the thumbnail display
 
 ### Bypassing Cloudflare
 
@@ -194,7 +195,7 @@ MINIMAX_VOICE_ID=moss_audio_ce44fc67-7ce3-11f0-8de5-96e35d26fb85
 
 Get your API key from [MiniMax Platform](https://platform.minimaxi.com).
 
-**Note**: MiniMax TTS uses volume level 2.0 (default is 1.0) for better audio output.
+**Note**: MiniMax TTS uses volume level 3.0 (default is 1.0) for better audio output.
 
 ### Thumbnail Configuration
 

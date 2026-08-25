@@ -281,8 +281,10 @@ def translate_and_generate_metadata(
             result["title"] = chs_title
 
         return result
+    except RuntimeError:
+        raise
     except Exception as e:
-        raise RuntimeError(f"Metadata generation failed: {e}")
+        raise RuntimeError(f"Metadata generation failed: {e}") from e
 
 
 def save_chinese_script(output_path: str | Path, metadata: dict, source_url: str | None = None) -> None:
