@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/windstudio/recutcli/actions/workflows/ci.yml/badge.svg)](https://github.com/windstudio/recutcli/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://github.com/windstudio/recutcli/blob/main/pyproject.toml)
 
 Auto-clip videos from supported websites (such as Kickstarter) into short social media videos with Chinese dubbing.
 
 Point it at a project video page — Recut downloads the video, picks the most dynamic scenes by motion analysis, transcribes them with Whisper, writes a Chinese script with an LLM, dubs it with TTS, and burns in aligned subtitles. The output is a ready-to-post vertical video with a thumbnail intro.
 
-![Demo](sample/demo.gif)
+![Demo](https://raw.githubusercontent.com/windstudio/recutcli/main/sample/demo.gif)
 
 ▶ **[Watch the full demo (with audio)](https://github.com/windstudio/recutcli/releases/download/v0.1.0/ClawStage.mp4)**
 
@@ -189,7 +189,7 @@ A companion **Chrome extension** is in the works: it grabs a video's download UR
 
 ## Configuration
 
-Create a `.env` file in the project directory (see [.env.example](.env.example)):
+Create a `.env` file in the project directory (see [.env.example](https://github.com/windstudio/recutcli/blob/main/.env.example)):
 
 ```env
 # LLM Configuration (required) — any OpenAI-compatible API works
@@ -282,4 +282,4 @@ This tool downloads and remixes third-party content. You are responsible for mak
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/windstudio/recutcli/blob/main/LICENSE)
