@@ -35,6 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 tts-coqui = ["TTS>=0.22.0"]
+dev = ["pytest>=8.0"]
 
 [project.scripts]
 recut = "recut.cli:main"
