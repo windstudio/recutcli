@@ -77,6 +77,61 @@ def test_check_ffmpeg_returns_false_on_called_process_error(mock_run):
     assert check_ffmpeg() is False
 
 
+# Tests for run_ffmpeg
+
+@patch("recut.downloader.subprocess.run")
+def test_run_ffmpeg_returns_result_on_success(mock_run):
+    """run_ffmpeg passes through the completed process on exit code 0."""
+    from recut.downloader import run_ffmpeg
+
+    mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+
+    result = run_ffmpeg(["ffmpeg", "-version"])
+
+    assert result.returncode == 0
+    mock_run.assert_called_once()
+
+
+@patch("recut.downloader.subprocess.run")
+def test_run_ffmpeg_raises_with_stderr_tail_on_failure(mock_run):
+    """run_ffmpeg raises RuntimeError including the tail of stderr on failure."""
+    from recut.downloader import run_ffmpeg
+
+    long_stderr = "x" * 1000 + "Error opening input files: Invalid data"
+    mock_run.return_value = MagicMock(returncode=1, stderr=long_stderr, stdout="")
+
+    with pytest.raises(RuntimeError, match="code 1.*Invalid data"):
+        run_ffmpeg(["ffmpeg", "-i", "bad.mp4"])
+
+
+@patch("recut.downloader.subprocess.run")
+def test_run_ffmpeg_error_message_truncated_to_500_chars(mock_run):
+    """The RuntimeError detail carries at most the last 500 characters of stderr."""
+    from recut.downloader import run_ffmpeg
+
+    long_stderr = "a" * 2000
+    mock_run.return_value = MagicMock(returncode=2, stderr=long_stderr, stdout="")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        run_ffmpeg(["ffmpeg", "-i", "bad.mp4"])
+
+    message = str(exc_info.value)
+    # 500 chars of stderr + prefix; the head of a 2000-char stderr must not appear
+    assert "a" * 501 not in message
+    assert long_stderr[-500:] in message
+
+
+@patch("recut.downloader.subprocess.run")
+def test_run_ffmpeg_falls_back_to_stdout_when_stderr_empty(mock_run):
+    """When stderr is empty the error detail comes from stdout."""
+    from recut.downloader import run_ffmpeg
+
+    mock_run.return_value = MagicMock(returncode=1, stderr="", stdout="stdout detail")
+
+    with pytest.raises(RuntimeError, match="stdout detail"):
+        run_ffmpeg(["ffmpeg", "-i", "bad.mp4"])
+
+
 # Tests for download_video
 
 @patch("recut.downloader.urllib.request.urlopen")
