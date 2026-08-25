@@ -8,7 +8,13 @@ Auto-clip videos from supported websites (such as Kickstarter) into short social
 
 Point it at a project video page — Recut downloads the video, picks the most dynamic scenes by motion analysis, transcribes them with Whisper, writes a Chinese script with an LLM, dubs it with TTS, and burns in aligned subtitles. The output is a ready-to-post vertical video with a thumbnail intro.
 
-![Demo](sample/Loona.mp4)
+<video src="https://raw.githubusercontent.com/windstudio/recutcli/main/sample/Loona.mp4" controls muted playsinline width="320"></video>
+
+## Motivation
+
+Combining the open-source ffmpeg library with LLMs and multimodal models, you can build many kinds of video workflows — and along the way, smaller models such as Whisper, edge-tts, and Coqui each have a role to play.
+
+This is an automatic video-clipping CLI I built a while back, now open-sourced. Feel free to install and use it as-is, or take it as a starting point to build your own video workflow. Hope you find it helpful.
 
 ## How it works
 
