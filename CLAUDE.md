@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Recut — Kickstarter 视频自动剪辑为中文配音短视频的 CLI 工具。
+Recut CLI — Kickstarter 视频自动剪辑为中文配音短视频的 CLI 工具。
+仓库：https://github.com/windstudio/recutcli（包名 `recut-cli`，命令仍为 `recut`）。
 技术栈：Python 3.10+ / click / ffmpeg (subprocess) / whisper / openai / edge-tts / Pillow。
 
 （后续可补充构建命令与架构说明）

@@ -1,5 +1,5 @@
 [project]
-name = "recut"
+name = "recut-cli"
 version = "0.1.0"
 description = "Auto-clip Kickstarter videos into social media shorts"
 requires-python = ">=3.10"
@@ -21,6 +21,9 @@ tts-coqui = ["TTS>=0.22.0"]
 
 [project.scripts]
 recut = "recut.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/windstudio/recutcli"
 
 [build-system]
 requires = ["setuptools>=61.0"]

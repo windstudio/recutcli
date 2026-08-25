@@ -1,10 +1,12 @@
-# Recut
+# Recut CLI
 
 Auto-clip Kickstarter videos into short social media videos with Chinese dubbing.
 
 ## Installation
 
 ```bash
+git clone https://github.com/windstudio/recutcli.git
+cd recutcli
 pip install -e .
 ```
 
@@ -58,7 +60,7 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 \
 
 ### Modes
 
-Recut supports two workflow modes:
+Recut CLI supports two workflow modes:
 
 **Automatic Mode** (default): Runs end-to-end without interruption. Best for batch processing.
 
