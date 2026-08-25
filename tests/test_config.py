@@ -138,8 +138,8 @@ def test_api_config_default_values(monkeypatch):
     config = get_api_config()
 
     assert config.llm_api_key == ""
-    assert config.llm_api_url == "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"
-    assert config.llm_model == "glm-5"
+    assert config.llm_api_url == "https://api.openai.com/v1"
+    assert config.llm_model == "gpt-4o-mini"
 
 
 def test_get_minimax_config_defaults():

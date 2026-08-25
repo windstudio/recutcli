@@ -1,7 +1,24 @@
 [project]
 name = "recut-cli"
 version = "0.1.0"
-description = "Auto-clip Kickstarter videos into social media shorts"
+description = "Auto-clip videos from the web into short social media videos with Chinese dubbing"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{ name = "windstudio" }]
+keywords = ["video", "kickstarter", "shorts", "dubbing", "subtitle", "whisper", "tts"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Video",
+]
 requires-python = ">=3.10"
 dependencies = [
     "click>=8.0.0",
@@ -24,6 +41,8 @@ recut = "recut.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/windstudio/recutcli"
+Repository = "https://github.com/windstudio/recutcli"
+Issues = "https://github.com/windstudio/recutcli/issues"
 
 [build-system]
 requires = ["setuptools>=61.0"]

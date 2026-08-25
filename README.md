@@ -1,19 +1,54 @@
 # Recut CLI
 
-Auto-clip Kickstarter videos into short social media videos with Chinese dubbing.
+[![CI](https://github.com/windstudio/recutcli/actions/workflows/ci.yml/badge.svg)](https://github.com/windstudio/recutcli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](pyproject.toml)
+
+Auto-clip videos from supported websites (such as Kickstarter) into short social media videos with Chinese dubbing.
+
+Point it at a project video page — Recut downloads the video, picks the most dynamic scenes by motion analysis, transcribes them with Whisper, writes a Chinese script with an LLM, dubs it with TTS, and burns in aligned subtitles. The output is a ready-to-post vertical video with a thumbnail intro.
+
+![Demo](sample/Loona.mp4)
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[Scrape project page] --> B[Download video]
+    B --> C[Scene & motion analysis]
+    C --> D[Whisper transcript]
+    D --> E[LLM writes Chinese script<br/>+ title + tags]
+    E --> F[TTS dubbing]
+    F --> G[Subtitle alignment]
+    G --> H[Thumbnail generation]
+    H --> I[Final composition]
+```
+
+Scene selection is motion-driven: fragments are scored by average pixel difference across sampled frames (with a duration penalty), so the final cut favors the most engaging footage instead of arbitrary segments.
 
 ## Installation
 
 ```bash
-git clone https://github.com/windstudio/recutcli.git
-cd recutcli
-pip install -e .
+pip install recut-cli
 ```
 
-Requires ffmpeg to be installed:
-- Windows: `winget install ffmpeg`
-- macOS: `brew install ffmpeg`
-- Linux: `apt install ffmpeg`
+Or from source:
+
+```bash
+git clone https://github.com/windstudio/recutcli.git
+cd recutcli
+pip install .
+```
+
+### Requirements
+
+- **Python** 3.10+
+- **ffmpeg** on your system:
+  - Windows: `winget install ffmpeg`
+  - macOS: `brew install ffmpeg`
+  - Linux: `apt install ffmpeg`
+- **An OpenAI-compatible API key** for script generation (see [Configuration](#configuration))
+- **Disk space**: `openai-whisper` pulls in PyTorch (~2 GB). On first run, the Whisper model is downloaded to `~/.cache/whisper` (~460 MB for the default `small` model).
 
 ## Usage
 
@@ -126,9 +161,9 @@ output/
 - **Logo Overlay**: If configured, a logo is displayed in the top-left corner throughout the video
 - **Subtitles**: When a thumbnail intro is present, subtitles are delayed 0.5s so they don't show during the thumbnail display
 
-### Bypassing Cloudflare
+## Getting the video URL manually
 
-If Kickstarter blocks direct requests (403 error), use a browser to get the video URL:
+If Kickstarter blocks direct requests (403 error), grab the video URL from your browser instead:
 
 1. Open the Kickstarter page in your browser
 2. Open developer tools (F12) → Network tab
@@ -140,15 +175,19 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 \
   --video-url "https://v2.kickstarter.com/..."
 ```
 
+## Browser extension (coming soon)
+
+A companion **Chrome extension** is in the works: it grabs a video's download URL, cover image, and title from the page with one click, then assembles a ready-to-paste `recut` command for you. It will be open-sourced under the same account and linked here once released.
+
 ## Configuration
 
-Create a `.env` file in the project directory:
+Create a `.env` file in the project directory (see [.env.example](.env.example)):
 
 ```env
-# LLM Configuration (required)
+# LLM Configuration (required) — any OpenAI-compatible API works
 LLM_API_KEY=your_api_key_here
-LLM_API_URL=https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1
-LLM_MODEL=glm-5
+LLM_API_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
 
 # TTS Configuration (optional)
 TTS_ENGINE=edge
@@ -166,13 +205,15 @@ THUMBNAIL_FONT_SIZE_TITLE=72
 The tool supports any OpenAI-compatible API:
 
 - **LLM_API_KEY** - Your API key (required)
-- **LLM_API_URL** - API endpoint URL (default: Yuanjing API)
-- **LLM_MODEL** - Model name (default: glm-5)
+- **LLM_API_URL** - API endpoint URL (default: `https://api.openai.com/v1`)
+- **LLM_MODEL** - Model name (default: `gpt-4o-mini`)
+
+For China-based users, point these at a domestic OpenAI-compatible endpoint, e.g. Yuanjing MaaS (`https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1`, model `glm-5`) or any other compatible provider.
 
 ### TTS Engines
 
 - **edge** (default) - Microsoft Edge TTS, high quality Chinese voice
-- **coqui** - Open-source TTS (requires Python 3.9-3.11)
+- **coqui** - Open-source TTS (requires Python 3.9-3.11, install with `pip install "recut-cli[tts-coqui]"`)
 - **minimax** - MiniMax cloud TTS API, high quality Chinese voice
 
 Each TTS engine has a different speaking speed. The tool automatically adjusts the Chinese script length to match the target duration:
@@ -221,12 +262,16 @@ THUMBNAIL_LOGO_PATH=material/logo.png
 THUMBNAIL_OUTRO_PATH=material/outro.mp4
 ```
 
-**Font Setup**: The tool auto-detects Chinese fonts (站酷高端黑, Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.
+**Font Setup**: The tool auto-detects Chinese fonts (站酷高端黑， Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.
 
 **Logo**: When `THUMBNAIL_LOGO_PATH` is set, the logo image will be overlaid on the entire video (not on the thumbnail image itself, to avoid overlap).
 
 **Outro Video**: When `THUMBNAIL_OUTRO_PATH` is set and the file exists, the outro video will be appended to the final video. The outro keeps its original audio. No subtitles or logo overlay are applied to the outro.
 
+## Disclaimer
+
+This tool downloads and remixes third-party content. You are responsible for making sure your use of the source material and the resulting videos complies with the content owners' rights and the terms of service of the platforms you publish to.
+
 ## License
 
-MIT
+[MIT](LICENSE)

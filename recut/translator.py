@@ -1,5 +1,5 @@
 # recut/translator.py
-"""Translation and content refinement using GLM-5 API."""
+"""Translation and content refinement using an OpenAI-compatible LLM API."""
 
 from datetime import datetime
 from pathlib import Path

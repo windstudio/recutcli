@@ -82,8 +82,8 @@ def get_api_config() -> APIConfig:
     """Get API configuration from environment."""
     return APIConfig(
         llm_api_key=os.environ.get("LLM_API_KEY", ""),
-        llm_api_url=os.environ.get("LLM_API_URL", "https://maas-api.ai-yuanjing.com/openapi/compatible-mode/v1"),
-        llm_model=os.environ.get("LLM_MODEL", "glm-5"),
+        llm_api_url=os.environ.get("LLM_API_URL", "https://api.openai.com/v1"),
+        llm_model=os.environ.get("LLM_MODEL", "gpt-4o-mini"),
     )
 
 
