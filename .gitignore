@@ -32,7 +32,7 @@ build/
 # Output (keep only the demo video in the repo)
 output/
 sample/*
-!sample/Loona.mp4
+!sample/ClawStage.mp4
 
 # Local media assets (logo, outro video)
 material/

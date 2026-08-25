@@ -8,7 +8,7 @@ Auto-clip videos from supported websites (such as Kickstarter) into short social
 
 Point it at a project video page — Recut downloads the video, picks the most dynamic scenes by motion analysis, transcribes them with Whisper, writes a Chinese script with an LLM, dubs it with TTS, and burns in aligned subtitles. The output is a ready-to-post vertical video with a thumbnail intro.
 
-<video src="https://raw.githubusercontent.com/windstudio/recutcli/main/sample/Loona.mp4" controls muted playsinline width="320"></video>
+<video src="https://raw.githubusercontent.com/windstudio/recutcli/main/sample/ClawStage.mp4" controls muted playsinline width="320"></video>
 
 ## Motivation
 
@@ -268,7 +268,7 @@ THUMBNAIL_LOGO_PATH=material/logo.png
 THUMBNAIL_OUTRO_PATH=material/outro.mp4
 ```
 
-**Font Setup**: The tool auto-detects Chinese fonts (站酷高端黑， Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.
+**Font Setup**: The tool auto-detects Chinese fonts (Zcool GaoDuanHei, Noto Sans SC, Source Han Sans, SimHei, etc.). For custom fonts, set `THUMBNAIL_FONT` to the font file path.
 
 **Logo**: When `THUMBNAIL_LOGO_PATH` is set, the logo image will be overlaid on the entire video (not on the thumbnail image itself, to avoid overlap).
 
