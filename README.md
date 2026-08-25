@@ -8,7 +8,9 @@ Auto-clip videos from supported websites (such as Kickstarter) into short social
 
 Point it at a project video page — Recut downloads the video, picks the most dynamic scenes by motion analysis, transcribes them with Whisper, writes a Chinese script with an LLM, dubs it with TTS, and burns in aligned subtitles. The output is a ready-to-post vertical video with a thumbnail intro.
 
-<video src="https://raw.githubusercontent.com/windstudio/recutcli/main/sample/ClawStage.mp4" controls muted playsinline width="320"></video>
+![Demo](sample/demo.gif)
+
+▶ **[Watch the full demo (with audio)](https://github.com/windstudio/recutcli/releases/download/v0.1.0/ClawStage.mp4)**
 
 ## Motivation
 

@@ -29,10 +29,11 @@ build/
 *.ts
 *.m3u8
 
-# Output (keep only the demo video in the repo)
+# Output (keep only the demo assets in the repo)
 output/
 sample/*
 !sample/ClawStage.mp4
+!sample/demo.gif
 
 # Local media assets (logo, outro video)
 material/
