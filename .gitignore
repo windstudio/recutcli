@@ -44,4 +44,5 @@ sample2/
 # Local tooling & personal files
 .claude/settings.local.json
 .playwright-mcp/
+.playwright-cli/
 tasks/

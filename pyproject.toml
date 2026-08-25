@@ -1,6 +1,6 @@
 [project]
 name = "recut-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Auto-clip videos from the web into short social media videos with Chinese dubbing"
 readme = "README.md"
 license = {text = "MIT"}
