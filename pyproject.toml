@@ -1,6 +1,6 @@
 [project]
 name = "recut-cli"
-version = "0.1.2"
+version = "0.1.3"
 description = "Auto-clip videos from the web into short social media videos with Chinese dubbing"
 readme = "README.md"
 license = {text = "MIT"}
@@ -41,9 +41,9 @@ dev = ["pytest>=8.0"]
 recut = "recut.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/windstudio/recutcli"
-Repository = "https://github.com/windstudio/recutcli"
-Issues = "https://github.com/windstudio/recutcli/issues"
+Homepage = "https://github.com/windstudio/recut-cli"
+Repository = "https://github.com/windstudio/recut-cli"
+Issues = "https://github.com/windstudio/recut-cli/issues"
 
 [build-system]
 requires = ["setuptools>=61.0"]

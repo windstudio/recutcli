@@ -1,16 +1,16 @@
 # Recut CLI
 
-[![CI](https://github.com/windstudio/recutcli/actions/workflows/ci.yml/badge.svg)](https://github.com/windstudio/recutcli/actions/workflows/ci.yml)
+[![CI](https://github.com/windstudio/recut-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/windstudio/recut-cli/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://github.com/windstudio/recutcli/blob/main/pyproject.toml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://github.com/windstudio/recut-cli/blob/main/pyproject.toml)
 
 Auto-clip videos from supported websites (such as Kickstarter) into short social media videos with Chinese dubbing.
 
 Point it at a project video page — Recut downloads the video, picks the most dynamic scenes by motion analysis, transcribes them with Whisper, writes a Chinese script with an LLM, dubs it with TTS, and burns in aligned subtitles. The output is a ready-to-post vertical video with a thumbnail intro.
 
-![Demo](https://raw.githubusercontent.com/windstudio/recutcli/main/sample/demo.gif)
+![Demo](https://raw.githubusercontent.com/windstudio/recut-cli/main/sample/demo.gif)
 
-▶ **[Watch the full demo (with audio)](https://github.com/windstudio/recutcli/releases/download/v0.1.0/ClawStage.mp4)**
+▶ **[Watch the full demo (with audio)](https://github.com/windstudio/recut-cli/releases/download/v0.1.0/ClawStage.mp4)**
 
 ## Motivation
 
@@ -43,8 +43,8 @@ pip install recut-cli
 Or from source:
 
 ```bash
-git clone https://github.com/windstudio/recutcli.git
-cd recutcli
+git clone https://github.com/windstudio/recut-cli.git
+cd recut-cli
 pip install .
 ```
 
@@ -189,7 +189,7 @@ A companion **Chrome extension** is in the works: it grabs a video's download UR
 
 ## Configuration
 
-Create a `.env` file in the project directory (see [.env.example](https://github.com/windstudio/recutcli/blob/main/.env.example)):
+Create a `.env` file in the project directory (see [.env.example](https://github.com/windstudio/recut-cli/blob/main/.env.example)):
 
 ```env
 # LLM Configuration (required) — any OpenAI-compatible API works
@@ -282,4 +282,4 @@ This tool downloads and remixes third-party content. You are responsible for mak
 
 ## License
 
-[MIT](https://github.com/windstudio/recutcli/blob/main/LICENSE)
+[MIT](https://github.com/windstudio/recut-cli/blob/main/LICENSE)
