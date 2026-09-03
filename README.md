@@ -183,9 +183,11 @@ recut https://kickstarter.com/projects/xxx -o output.mp4 \
   --video-url "https://v2.kickstarter.com/..."
 ```
 
-## Browser extension (coming soon)
+If you'd rather not dig through devtools, the companion [Chrome extension](#browser-extension) grabs the URL and assembles the command for you.
 
-A companion **Chrome extension** is in the works: it grabs a video's download URL, cover image, and title from the page with one click, then assembles a ready-to-paste `recut` command for you. It will be open-sourced under the same account and linked here once released.
+## Browser extension
+
+A companion **Chrome extension** is available: [Recut CRX](https://github.com/windstudio/recut-crx) grabs a video's download URL, cover image, and title from the page with one click, then assembles a ready-to-paste `recut` command for you — no more digging through devtools.
 
 ## Configuration
 
